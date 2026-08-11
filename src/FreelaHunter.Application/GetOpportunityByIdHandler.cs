@@ -36,6 +36,7 @@ public class GetOpportunityByIdHandler
             Budget = new BudgetResponse
             {
                 Kind = MapToContractBudgetKind(opportunity.Budget.Kind),
+                Basis = MapToContractBudgetBasis(opportunity.Budget.Basis),
                 Amount = opportunity.Budget.Amount,
                 Minimum = opportunity.Budget.Minimum,
                 Maximum = opportunity.Budget.Maximum,
@@ -88,6 +89,15 @@ public class GetOpportunityByIdHandler
         BudgetKind.UpTo => ContractBudgetKind.UpTo,
         BudgetKind.From => ContractBudgetKind.From,
         _ => ContractBudgetKind.Unknown
+    };
+
+    private static ContractBudgetBasis MapToContractBudgetBasis(BudgetBasis domain) => domain switch
+    {
+        BudgetBasis.Unknown => ContractBudgetBasis.Unknown,
+        BudgetBasis.FixedProject => ContractBudgetBasis.FixedProject,
+        BudgetBasis.Hourly => ContractBudgetBasis.Hourly,
+        BudgetBasis.Monthly => ContractBudgetBasis.Monthly,
+        _ => ContractBudgetBasis.Unknown
     };
 
     private static ContractOpportunityStatus MapToContractStatus(OpportunityStatus domain) => domain switch

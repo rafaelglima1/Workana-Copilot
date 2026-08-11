@@ -69,23 +69,29 @@ public class CreateManualOpportunityHandler
         if (!string.IsNullOrWhiteSpace(input.Currency))
             currency = CurrencyCode.From(input.Currency);
 
+        var basis = MapBudgetBasis(input.Basis);
+
         return input.Kind switch
         {
             ContractBudgetKind.Unknown => Budget.Unknown(),
-            ContractBudgetKind.Negotiable => Budget.Negotiable(currency),
+            ContractBudgetKind.Negotiable => Budget.Negotiable(currency, basis),
             ContractBudgetKind.Exact => Budget.Exact(
                 input.Amount ?? throw new DomainException("Budget.Exact requires Amount."),
-                currency ?? throw new DomainException("Budget.Exact requires Currency.")),
+                currency ?? throw new DomainException("Budget.Exact requires Currency."),
+                basis),
             ContractBudgetKind.Range => Budget.Range(
                 input.Minimum ?? throw new DomainException("Budget.Range requires Minimum."),
                 input.Maximum ?? throw new DomainException("Budget.Range requires Maximum."),
-                currency ?? throw new DomainException("Budget.Range requires Currency.")),
+                currency ?? throw new DomainException("Budget.Range requires Currency."),
+                basis),
             ContractBudgetKind.UpTo => Budget.UpTo(
                 input.Maximum ?? throw new DomainException("Budget.UpTo requires Maximum."),
-                currency ?? throw new DomainException("Budget.UpTo requires Currency.")),
+                currency ?? throw new DomainException("Budget.UpTo requires Currency."),
+                basis),
             ContractBudgetKind.From => Budget.From(
                 input.Minimum ?? throw new DomainException("Budget.From requires Minimum."),
-                currency ?? throw new DomainException("Budget.From requires Currency.")),
+                currency ?? throw new DomainException("Budget.From requires Currency."),
+                basis),
             _ => throw new DomainException($"Unknown BudgetKind: {input.Kind}")
         };
     }
@@ -128,6 +134,7 @@ public class CreateManualOpportunityHandler
             Budget = new BudgetResponse
             {
                 Kind = MapToContractBudgetKind(opportunity.Budget.Kind),
+                Basis = MapToContractBudgetBasis(opportunity.Budget.Basis),
                 Amount = opportunity.Budget.Amount,
                 Minimum = opportunity.Budget.Minimum,
                 Maximum = opportunity.Budget.Maximum,
@@ -164,6 +171,15 @@ public class CreateManualOpportunityHandler
         _ => ContractMarketplace.Unknown
     };
 
+    private static BudgetBasis MapBudgetBasis(ContractBudgetBasis contract) => contract switch
+    {
+        ContractBudgetBasis.Unknown => BudgetBasis.Unknown,
+        ContractBudgetBasis.FixedProject => BudgetBasis.FixedProject,
+        ContractBudgetBasis.Hourly => BudgetBasis.Hourly,
+        ContractBudgetBasis.Monthly => BudgetBasis.Monthly,
+        _ => BudgetBasis.Unknown
+    };
+
     private static ContractIntakeChannel MapToContractIntakeChannel(IntakeChannel domain) => domain switch
     {
         IntakeChannel.Manual => ContractIntakeChannel.Manual,
@@ -180,6 +196,15 @@ public class CreateManualOpportunityHandler
         BudgetKind.UpTo => ContractBudgetKind.UpTo,
         BudgetKind.From => ContractBudgetKind.From,
         _ => ContractBudgetKind.Unknown
+    };
+
+    private static ContractBudgetBasis MapToContractBudgetBasis(BudgetBasis domain) => domain switch
+    {
+        BudgetBasis.Unknown => ContractBudgetBasis.Unknown,
+        BudgetBasis.FixedProject => ContractBudgetBasis.FixedProject,
+        BudgetBasis.Hourly => ContractBudgetBasis.Hourly,
+        BudgetBasis.Monthly => ContractBudgetBasis.Monthly,
+        _ => ContractBudgetBasis.Unknown
     };
 
     private static ContractOpportunityStatus MapToContractStatus(OpportunityStatus domain) => domain switch

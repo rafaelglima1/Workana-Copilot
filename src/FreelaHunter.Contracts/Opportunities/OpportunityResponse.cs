@@ -23,6 +23,7 @@ public sealed class OpportunityResponse
 public sealed class BudgetResponse
 {
     public ContractBudgetKind Kind { get; set; }
+    public ContractBudgetBasis Basis { get; set; }
     public decimal? Amount { get; set; }
     public decimal? Minimum { get; set; }
     public decimal? Maximum { get; set; }

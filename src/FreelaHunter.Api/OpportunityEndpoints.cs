@@ -58,5 +58,31 @@ public static class OpportunityEndpoints
         .Produces<OpportunityResponse>((int)HttpStatusCode.OK)
         .Produces((int)HttpStatusCode.NotFound)
         .ProducesProblem((int)HttpStatusCode.BadRequest);
+
+        app.MapPost("/api/opportunities/{id:guid}/score", async (
+            Guid id,
+            [FromBody] ScoreOpportunityRequest request,
+            [FromServices] ScoreOpportunity handler,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(id, request, cancellationToken);
+                return result is not null ? Results.Ok(result) : Results.NotFound();
+            }
+            catch (DomainException ex)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Title = "Invalid input",
+                    Detail = ex.Message
+                });
+            }
+        })
+        .WithName("ScoreOpportunity")
+        .Produces<OpportunityScoreResponse>((int)HttpStatusCode.OK)
+        .Produces((int)HttpStatusCode.NotFound)
+        .ProducesProblem((int)HttpStatusCode.BadRequest);
     }
 }

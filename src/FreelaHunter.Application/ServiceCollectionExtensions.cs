@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
         services.AddSingleton<CreateManualOpportunityHandler>();
         services.AddSingleton<GetOpportunityByIdHandler>();
+        services.AddSingleton<ScoreOpportunity>();
         return services;
     }
 }

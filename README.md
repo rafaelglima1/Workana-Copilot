@@ -24,6 +24,7 @@ dotnet test --no-build
 
 ## Status
 
-Este é o work item FHL-001 — Solution Foundation.
+- Manual opportunity intake (FHL-003)
+- Deterministic opportunity scoring (FHL-004) — score calculado on-demand, sem LLM
 
-Integrações externas (Workana, Gmail, LLMs, scraping, browser automation, envio de propostas) ainda **não foram implementadas**.
+Nenhum LLM está conectado. Integrações externas (Workana, Gmail, scraping) ainda **não foram implementadas**.

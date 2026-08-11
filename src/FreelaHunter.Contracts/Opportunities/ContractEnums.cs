@@ -32,3 +32,11 @@ public enum ContractBudgetKind
     UpTo = 4,
     From = 5
 }
+
+public enum ContractBudgetBasis
+{
+    Unknown = 0,
+    FixedProject = 1,
+    Hourly = 2,
+    Monthly = 3
+}

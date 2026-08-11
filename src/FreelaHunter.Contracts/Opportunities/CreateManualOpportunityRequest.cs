@@ -19,6 +19,7 @@ public sealed class CreateManualOpportunityRequest
 public sealed class BudgetInput
 {
     public ContractBudgetKind Kind { get; set; }
+    public ContractBudgetBasis Basis { get; set; }
     public decimal? Amount { get; set; }
     public decimal? Minimum { get; set; }
     public decimal? Maximum { get; set; }
