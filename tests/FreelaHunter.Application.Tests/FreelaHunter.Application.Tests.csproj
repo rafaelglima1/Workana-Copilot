@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FreelaHunter.Application\FreelaHunter.Application.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Contracts\FreelaHunter.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Domain\FreelaHunter.Domain.csproj" />
   </ItemGroup>
 
 </Project>

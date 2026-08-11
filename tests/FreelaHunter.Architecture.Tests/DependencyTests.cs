@@ -71,4 +71,11 @@ public class DependencyTests
         var references = ApplicationAssembly.GetReferencedAssemblies().Select(a => a.Name);
         Assert.DoesNotContain("FreelaHunter.Web", references);
     }
+
+    [Fact]
+    public void Contracts_Does_Not_Depend_On_Domain()
+    {
+        var references = ContractsAssembly.GetReferencedAssemblies().Select(a => a.Name);
+        Assert.DoesNotContain("FreelaHunter.Domain", references);
+    }
 }

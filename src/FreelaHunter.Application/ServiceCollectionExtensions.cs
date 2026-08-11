@@ -6,7 +6,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
+        services.AddSingleton<CreateManualOpportunityHandler>();
+        services.AddSingleton<GetOpportunityByIdHandler>();
         return services;
     }
 }

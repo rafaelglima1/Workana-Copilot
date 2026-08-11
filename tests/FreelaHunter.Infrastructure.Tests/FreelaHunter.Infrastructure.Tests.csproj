@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FreelaHunter.Infrastructure\FreelaHunter.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Application\FreelaHunter.Application.csproj" />
   </ItemGroup>
 
 </Project>
