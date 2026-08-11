@@ -124,6 +124,59 @@ public static class OpportunityEndpoints
         .Produces((int)HttpStatusCode.ServiceUnavailable)
         .Produces((int)HttpStatusCode.BadGateway)
         .ProducesProblem((int)HttpStatusCode.BadRequest);
+
+        app.MapPost("/api/opportunities/{id:guid}/evaluate", async (
+            Guid id,
+            [FromServices] EvaluateOpportunityHandler handler,
+            [FromServices] IOpportunityRepository opportunityRepository,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(id, cancellationToken);
+
+                if (result is null)
+                {
+                    var oppId = FreelaHunter.Domain.ValueObjects.OpportunityId.From(id);
+                    var opportunity = await opportunityRepository.GetByIdAsync(oppId, cancellationToken);
+                    return opportunity is not null
+                        ? Results.Conflict(new ProblemDetails
+                        {
+                            Status = (int)HttpStatusCode.Conflict,
+                            Title = "Profile not configured",
+                            Detail = "FreelancerProfile must be configured before evaluation."
+                        })
+                        : Results.NotFound();
+                }
+
+                var response = MapToEvaluationResponse(result);
+                return Results.Ok(response);
+            }
+            catch (DomainException ex)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Title = "Invalid input",
+                    Detail = ex.Message
+                });
+            }
+            catch (OpportunityIntelligenceUnavailableException)
+            {
+                return Results.StatusCode((int)HttpStatusCode.ServiceUnavailable);
+            }
+            catch (OpportunityIntelligenceInvalidResponseException)
+            {
+                return Results.StatusCode((int)HttpStatusCode.BadGateway);
+            }
+        })
+        .WithName("EvaluateOpportunity")
+        .Produces<OpportunityEvaluationResponse>((int)HttpStatusCode.OK)
+        .Produces((int)HttpStatusCode.NotFound)
+        .Produces((int)HttpStatusCode.Conflict)
+        .Produces((int)HttpStatusCode.ServiceUnavailable)
+        .Produces((int)HttpStatusCode.BadGateway)
+        .ProducesProblem((int)HttpStatusCode.BadRequest);
     }
 
     private static OpportunityAnalysisResponse MapToAnalysisResponse(
@@ -149,6 +202,74 @@ public static class OpportunityEndpoints
                     Model = analysis.Usage.Model
                 }
                 : null
+        };
+    }
+
+    private static OpportunityEvaluationResponse MapToEvaluationResponse(
+        FreelaHunter.Application.OpportunityEvaluation evaluation)
+    {
+        return new OpportunityEvaluationResponse
+        {
+            OpportunityId = evaluation.OpportunityId.Value.ToString(),
+            Analysis = MapToAnalysisResponse(evaluation.Analysis),
+            ScoringInputs = MapToScoringInputs(evaluation.ScoringInputs),
+            Score = MapToScoreResponse(evaluation.Score)
+        };
+    }
+
+    private static ScoringInputSummaryResponse MapToScoringInputs(
+        FreelaHunter.Application.ScoringInputSummary inputs)
+    {
+        return new ScoringInputSummaryResponse
+        {
+            ProfileSkills = inputs.ProfileSkills
+                .Select(s => new SkillCapabilitySummaryResponse
+                {
+                    Name = s.Name,
+                    Level = s.Level
+                })
+                .ToList(),
+            TargetHourlyRate = new HourlyRateSummaryResponse
+            {
+                Amount = inputs.TargetHourlyRate.Amount,
+                Currency = inputs.TargetHourlyRate.Currency
+            },
+            EstimatedHours = inputs.EstimatedHours,
+            DeliveryRisk = inputs.DeliveryRisk.ToString(),
+            AiLeverage = inputs.AiLeverage.ToString(),
+            TechnicalFitSource = inputs.TechnicalFitSource,
+            EstimatedHoursSource = inputs.EstimatedHoursSource,
+            DeliveryRiskSource = inputs.DeliveryRiskSource,
+            AiLeverageSource = inputs.AiLeverageSource,
+            TargetHourlyRateSource = inputs.TargetHourlyRateSource
+        };
+    }
+
+    private static OpportunityScoreResponse MapToScoreResponse(
+        FreelaHunter.Domain.ValueObjects.OpportunityScore score)
+    {
+        return new OpportunityScoreResponse
+        {
+            Overall = score.Overall.Value,
+            Recommendation = score.Recommendation.ToString(),
+            TechnicalFit = MapComponent(score.TechnicalFit),
+            EconomicPotential = MapComponent(score.EconomicPotential),
+            ClientQuality = MapComponent(score.ClientQuality),
+            Competition = MapComponent(score.Competition),
+            DeliveryConfidence = MapComponent(score.DeliveryConfidence),
+            AiLeverage = MapComponent(score.AiLeverage)
+        };
+    }
+
+    private static ScoreComponentResponse MapComponent(
+        FreelaHunter.Domain.ValueObjects.ScoreComponent component)
+    {
+        return new ScoreComponentResponse
+        {
+            Score = component.Score.Value,
+            Weight = component.Weight,
+            WeightedContribution = component.WeightedContribution,
+            Rules = component.Rules.Select(r => r.ToString()).ToList()
         };
     }
 }
