@@ -279,4 +279,104 @@ public class FreelancerProfileTests
         Assert.Equal(100, rate.Amount);
         Assert.Equal("BRL", rate.Currency.Value);
     }
+
+    [Fact]
+    public void Create_AliasDuplicates_ThrowsDomainException()
+    {
+        Assert.Throws<DomainException>(() => FreelancerProfile.Create(
+            [Skill("C#"), Skill("CSharp")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL")));
+    }
+
+    [Fact]
+    public void Create_AliasDuplicates_ReactAndReactJs_ThrowsDomainException()
+    {
+        Assert.Throws<DomainException>(() => FreelancerProfile.Create(
+            [Skill("React"), Skill("React.js")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL")));
+    }
+
+    [Fact]
+    public void Create_AliasDuplicates_PostgresAndPostgreSQL_ThrowsDomainException()
+    {
+        Assert.Throws<DomainException>(() => FreelancerProfile.Create(
+            [Skill("PostgreSQL"), Skill("Postgres")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL")));
+    }
+
+    [Fact]
+    public void Create_AliasDuplicates_K8sAndKubernetes_ThrowsDomainException()
+    {
+        Assert.Throws<DomainException>(() => FreelancerProfile.Create(
+            [Skill("Kubernetes"), Skill("K8s")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL")));
+    }
+
+    [Fact]
+    public void Create_AliasDuplicates_CSharpAndCSharp_ThrowsDomainException()
+    {
+        Assert.Throws<DomainException>(() => FreelancerProfile.Create(
+            [Skill("CSharp"), Skill("C Sharp")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL")));
+    }
+
+    [Fact]
+    public void Create_NonAliases_Succeeds()
+    {
+        var profile = FreelancerProfile.Create(
+            [Skill("C#"), Skill(".NET"), Skill("ASP.NET Core")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL"));
+
+        Assert.Equal(3, profile.Skills.Count);
+    }
+
+    [Fact]
+    public void Create_NonAliases_DotNetAndAspDotNetCore_Succeeds()
+    {
+        var profile = FreelancerProfile.Create(
+            [Skill(".NET"), Skill("ASP.NET Core")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL"));
+
+        Assert.Equal(2, profile.Skills.Count);
+    }
+
+    [Fact]
+    public void Create_NonAliases_CSharpAndDotNet_Succeeds()
+    {
+        var profile = FreelancerProfile.Create(
+            [Skill("C#"), Skill(".NET")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL"));
+
+        Assert.Equal(2, profile.Skills.Count);
+    }
+
+    [Fact]
+    public void Create_NonAliases_DotNetAndEntityFrameworkCore_Succeeds()
+    {
+        var profile = FreelancerProfile.Create(
+            [Skill(".NET"), Skill("Entity Framework Core")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL"));
+
+        Assert.Equal(2, profile.Skills.Count);
+    }
+
+    [Fact]
+    public void Create_NonAliases_CSharpAndEntityFrameworkCore_Succeeds()
+    {
+        var profile = FreelancerProfile.Create(
+            [Skill("C#"), Skill("Entity Framework Core")],
+            [Rate(100, "BRL")],
+            CurrencyCode.From("BRL"));
+
+        Assert.Equal(2, profile.Skills.Count);
+    }
 }

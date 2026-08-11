@@ -522,4 +522,175 @@ public class EvaluateOpportunityTests
         Assert.Contains("REST API", result.Analysis.TechnicalRequirements);
         Assert.Contains("Bluetooth", result.Analysis.TechnicalRequirements);
     }
+
+    [Fact]
+    public async Task InferredTechnicalRequirementMatches_ContainsMatches()
+    {
+        var profile = FakeFreelancerProfileRepository.CreateDefaultProfile();
+        await _profileRepository.SaveAsync(profile, CancellationToken.None);
+
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "API"]);
+
+        var gatewayWithReqs = new FakeIntelligenceGateway((input, ct) =>
+        {
+            return Task.FromResult(new OpportunitySemanticAnalysis
+            {
+                EstimatedHours = 120,
+                DeliveryRisk = DeliveryRiskLevel.Moderate,
+                AiLeverage = AiLeverageLevel.High,
+                Confidence = AnalysisConfidence.Medium,
+                TechnicalRequirements = ["C#", "API", "Docker", "Kubernetes"],
+                RiskFactors = [],
+                AiLeverageReasons = [],
+                ClarifyingQuestions = [],
+                Usage = new LlmUsage { Provider = "MiMo", Model = "mimo-v2.5" }
+            });
+        });
+
+        var handler = new EvaluateOpportunityHandler(
+            _opportunityRepository, _profileRepository, gatewayWithReqs);
+
+        var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result!.InferredTechnicalRequirementMatches);
+        Assert.Equal(4, result.InferredTechnicalRequirementMatches.Count);
+    }
+
+    [Fact]
+    public async Task InferredTechnicalRequirementMatches_ExactMatch()
+    {
+        var profile = FakeFreelancerProfileRepository.CreateDefaultProfile();
+        await _profileRepository.SaveAsync(profile, CancellationToken.None);
+
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "API"]);
+
+        var gatewayWithReqs = new FakeIntelligenceGateway((input, ct) =>
+        {
+            return Task.FromResult(new OpportunitySemanticAnalysis
+            {
+                EstimatedHours = 120,
+                DeliveryRisk = DeliveryRiskLevel.Moderate,
+                AiLeverage = AiLeverageLevel.High,
+                Confidence = AnalysisConfidence.Medium,
+                TechnicalRequirements = ["C#"],
+                RiskFactors = [],
+                AiLeverageReasons = [],
+                ClarifyingQuestions = [],
+                Usage = new LlmUsage { Provider = "MiMo", Model = "mimo-v2.5" }
+            });
+        });
+
+        var handler = new EvaluateOpportunityHandler(
+            _opportunityRepository, _profileRepository, gatewayWithReqs);
+
+        var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.InferredTechnicalRequirementMatches.First();
+        Assert.Equal(SkillMatchKind.Exact, match.MatchKind);
+    }
+
+    [Fact]
+    public async Task InferredTechnicalRequirementMatches_AliasMatch()
+    {
+        var profile = FakeFreelancerProfileRepository.CreateDefaultProfile();
+        await _profileRepository.SaveAsync(profile, CancellationToken.None);
+
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "API"]);
+
+        var gatewayWithReqs = new FakeIntelligenceGateway((input, ct) =>
+        {
+            return Task.FromResult(new OpportunitySemanticAnalysis
+            {
+                EstimatedHours = 120,
+                DeliveryRisk = DeliveryRiskLevel.Moderate,
+                AiLeverage = AiLeverageLevel.High,
+                Confidence = AnalysisConfidence.Medium,
+                TechnicalRequirements = ["CSharp"],
+                RiskFactors = [],
+                AiLeverageReasons = [],
+                ClarifyingQuestions = [],
+                Usage = new LlmUsage { Provider = "MiMo", Model = "mimo-v2.5" }
+            });
+        });
+
+        var handler = new EvaluateOpportunityHandler(
+            _opportunityRepository, _profileRepository, gatewayWithReqs);
+
+        var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.InferredTechnicalRequirementMatches.First();
+        Assert.Equal(SkillMatchKind.Alias, match.MatchKind);
+    }
+
+    [Fact]
+    public async Task InferredTechnicalRequirementMatches_NoMatch()
+    {
+        var profile = FakeFreelancerProfileRepository.CreateDefaultProfile();
+        await _profileRepository.SaveAsync(profile, CancellationToken.None);
+
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "API"]);
+
+        var gatewayWithReqs = new FakeIntelligenceGateway((input, ct) =>
+        {
+            return Task.FromResult(new OpportunitySemanticAnalysis
+            {
+                EstimatedHours = 120,
+                DeliveryRisk = DeliveryRiskLevel.Moderate,
+                AiLeverage = AiLeverageLevel.High,
+                Confidence = AnalysisConfidence.Medium,
+                TechnicalRequirements = ["Python"],
+                RiskFactors = [],
+                AiLeverageReasons = [],
+                ClarifyingQuestions = [],
+                Usage = new LlmUsage { Provider = "MiMo", Model = "mimo-v2.5" }
+            });
+        });
+
+        var handler = new EvaluateOpportunityHandler(
+            _opportunityRepository, _profileRepository, gatewayWithReqs);
+
+        var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.InferredTechnicalRequirementMatches.First();
+        Assert.Equal(SkillMatchKind.NoMatch, match.MatchKind);
+    }
+
+    [Fact]
+    public async Task InferredTechnicalRequirementMatches_DoesNotAffectScore()
+    {
+        var profile = FakeFreelancerProfileRepository.CreateDefaultProfile();
+        await _profileRepository.SaveAsync(profile, CancellationToken.None);
+
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "API"]);
+
+        var gatewayWithReqs = new FakeIntelligenceGateway((input, ct) =>
+        {
+            return Task.FromResult(new OpportunitySemanticAnalysis
+            {
+                EstimatedHours = 120,
+                DeliveryRisk = DeliveryRiskLevel.Moderate,
+                AiLeverage = AiLeverageLevel.High,
+                Confidence = AnalysisConfidence.Medium,
+                TechnicalRequirements = ["Python", "Java"],
+                RiskFactors = [],
+                AiLeverageReasons = [],
+                ClarifyingQuestions = [],
+                Usage = new LlmUsage { Provider = "MiMo", Model = "mimo-v2.5" }
+            });
+        });
+
+        var handler = new EvaluateOpportunityHandler(
+            _opportunityRepository, _profileRepository, gatewayWithReqs);
+
+        var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result!.InferredTechnicalRequirementMatches);
+        Assert.Equal(2, result.InferredTechnicalRequirementMatches.Count);
+        Assert.InRange(result.Score.Overall.Value, 0, 100);
+    }
 }

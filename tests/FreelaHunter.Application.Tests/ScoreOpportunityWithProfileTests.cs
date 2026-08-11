@@ -268,6 +268,70 @@ public class ScoreOpportunityWithProfileTests
         Assert.Equal(profile.Id.Value, storedProfile!.Id.Value);
     }
 
+    [Fact]
+    public async Task TechnicalSkillMatches_ContainsMatches()
+    {
+        await StoreProfile();
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#", "Python"]);
+
+        var result = await _handler.HandleAsync(
+            opportunity.Id.Value,
+            CreateValidRequest(),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.NotNull(result!.TechnicalSkillMatches);
+        Assert.Equal(2, result.TechnicalSkillMatches.Count);
+    }
+
+    [Fact]
+    public async Task TechnicalSkillMatches_ExactMatch()
+    {
+        await StoreProfile();
+        var opportunity = await CreateAndStoreOpportunity(skills: ["C#"]);
+
+        var result = await _handler.HandleAsync(
+            opportunity.Id.Value,
+            CreateValidRequest(),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.TechnicalSkillMatches.First();
+        Assert.Equal("Exact", match.MatchKind);
+    }
+
+    [Fact]
+    public async Task TechnicalSkillMatches_AliasMatch()
+    {
+        await StoreProfile();
+        var opportunity = await CreateAndStoreOpportunity(skills: ["CSharp"]);
+
+        var result = await _handler.HandleAsync(
+            opportunity.Id.Value,
+            CreateValidRequest(),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.TechnicalSkillMatches.First();
+        Assert.Equal("Alias", match.MatchKind);
+    }
+
+    [Fact]
+    public async Task TechnicalSkillMatches_NoMatch()
+    {
+        await StoreProfile();
+        var opportunity = await CreateAndStoreOpportunity(skills: ["Python"]);
+
+        var result = await _handler.HandleAsync(
+            opportunity.Id.Value,
+            CreateValidRequest(),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        var match = result!.TechnicalSkillMatches.First();
+        Assert.Equal("NoMatch", match.MatchKind);
+    }
+
     private static ScoreOpportunityWithProfileRequest CreateValidRequest()
     {
         return new ScoreOpportunityWithProfileRequest

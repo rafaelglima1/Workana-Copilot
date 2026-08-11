@@ -10,6 +10,7 @@ public sealed record OpportunityEvaluation
     public required OpportunitySemanticAnalysis Analysis { get; init; }
     public required OpportunityScore Score { get; init; }
     public required ScoringInputSummary ScoringInputs { get; init; }
+    public required IReadOnlyCollection<InferredTechnicalRequirementMatch> InferredTechnicalRequirementMatches { get; init; }
 }
 
 public sealed record ScoringInputSummary
@@ -36,4 +37,13 @@ public sealed record HourlyRateSummary
 {
     public decimal Amount { get; init; }
     public string Currency { get; init; } = string.Empty;
+}
+
+public sealed record InferredTechnicalRequirementMatch
+{
+    public string Requirement { get; init; } = string.Empty;
+    public string? MatchedProfileSkill { get; init; }
+    public string? CanonicalSkill { get; init; }
+    public SkillMatchKind MatchKind { get; init; }
+    public SkillLevel? ProfileLevel { get; init; }
 }

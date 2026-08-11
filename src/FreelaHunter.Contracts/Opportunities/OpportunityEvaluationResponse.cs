@@ -6,6 +6,7 @@ public sealed class OpportunityEvaluationResponse
     public OpportunityAnalysisResponse Analysis { get; set; } = new();
     public ScoringInputSummaryResponse ScoringInputs { get; set; } = new();
     public OpportunityScoreResponse Score { get; set; } = new();
+    public List<InferredTechnicalRequirementMatchResponse> InferredTechnicalRequirementMatches { get; set; } = [];
 }
 
 public sealed class ScoringInputSummaryResponse
@@ -32,4 +33,13 @@ public sealed class HourlyRateSummaryResponse
 {
     public decimal Amount { get; set; }
     public string Currency { get; set; } = string.Empty;
+}
+
+public sealed class InferredTechnicalRequirementMatchResponse
+{
+    public string Requirement { get; set; } = string.Empty;
+    public string? MatchedProfileSkill { get; set; }
+    public string? CanonicalSkill { get; set; }
+    public string MatchKind { get; set; } = string.Empty;
+    public string? ProfileLevel { get; set; }
 }

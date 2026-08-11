@@ -12,6 +12,7 @@ public sealed record OpportunityScore
     public ScoreComponent Competition { get; }
     public ScoreComponent DeliveryConfidence { get; }
     public ScoreComponent AiLeverage { get; }
+    public IReadOnlyCollection<SkillMatchEvidence> TechnicalSkillMatches { get; }
 
     private OpportunityScore(
         ScoreValue overall,
@@ -21,7 +22,8 @@ public sealed record OpportunityScore
         ScoreComponent clientQuality,
         ScoreComponent competition,
         ScoreComponent deliveryConfidence,
-        ScoreComponent aiLeverage)
+        ScoreComponent aiLeverage,
+        IReadOnlyCollection<SkillMatchEvidence> technicalSkillMatches)
     {
         Overall = overall;
         Recommendation = recommendation;
@@ -31,6 +33,7 @@ public sealed record OpportunityScore
         Competition = competition;
         DeliveryConfidence = deliveryConfidence;
         AiLeverage = aiLeverage;
+        TechnicalSkillMatches = technicalSkillMatches;
     }
 
     public static OpportunityScore Create(
@@ -40,7 +43,8 @@ public sealed record OpportunityScore
         ScoreComponent clientQuality,
         ScoreComponent competition,
         ScoreComponent deliveryConfidence,
-        ScoreComponent aiLeverage)
+        ScoreComponent aiLeverage,
+        IReadOnlyCollection<SkillMatchEvidence>? technicalSkillMatches = null)
     {
         var recommendation = overall.Value switch
         {
@@ -58,6 +62,7 @@ public sealed record OpportunityScore
             clientQuality,
             competition,
             deliveryConfidence,
-            aiLeverage);
+            aiLeverage,
+            technicalSkillMatches ?? Array.Empty<SkillMatchEvidence>());
     }
 }

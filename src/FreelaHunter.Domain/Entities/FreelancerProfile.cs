@@ -83,6 +83,8 @@ public sealed class FreelancerProfile
             throw new DomainException("At least one skill is required.");
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var canonicalSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var skill in list)
         {
             if (skill is null)
@@ -90,6 +92,14 @@ public sealed class FreelancerProfile
 
             if (!seen.Add(skill.Name))
                 throw new DomainException($"Duplicate skill '{skill.Name}' is not allowed.");
+
+            var canonical = SkillAliasCatalog.Default.ResolveCanonical(skill.Name);
+            if (canonical is not null)
+            {
+                if (!canonicalSeen.Add(canonical))
+                    throw new DomainException(
+                        $"Skill '{skill.Name}' is semantically equivalent to another skill via alias catalog.");
+            }
         }
 
         return list.AsReadOnly();

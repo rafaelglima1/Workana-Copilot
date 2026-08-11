@@ -103,4 +103,117 @@ public class OpportunityScorerTechnicalFitTests
 
         Assert.Equal(100, score.TechnicalFit.Score.Value);
     }
+
+    [Fact]
+    public void AliasMatch_RecognizesCanonicalEquivalent()
+    {
+        var opportunity = CreateOpportunity("CSharp");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(100, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void AliasMatch_ReactJsMatchesReact()
+    {
+        var opportunity = CreateOpportunity("React.js");
+        var context = CreateContext(
+            SkillCapability.Create("React", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(100, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void AliasMatch_K8sMatchesKubernetes()
+    {
+        var opportunity = CreateOpportunity("K8s");
+        var context = CreateContext(
+            SkillCapability.Create("Kubernetes", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(100, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void AliasMatch_PostgresMatchesPostgreSQL()
+    {
+        var opportunity = CreateOpportunity("Postgres");
+        var context = CreateContext(
+            SkillCapability.Create("PostgreSQL", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(100, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void AliasMatch_ExactPreferredOverAlias()
+    {
+        var opportunity = CreateOpportunity("C#");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert),
+            SkillCapability.Create("CSharp", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(100, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void AliasMatch_MixedExactAndAlias()
+    {
+        var opportunity = CreateOpportunity("C#", "React.js", "Python");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert),
+            SkillCapability.Create("React", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Equal(66.67m, score.TechnicalFit.Score.Value);
+    }
+
+    [Fact]
+    public void TechnicalSkillMatches_ContainsExactMatch()
+    {
+        var opportunity = CreateOpportunity("C#");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Single(score.TechnicalSkillMatches);
+        Assert.Equal(SkillMatchKind.Exact, score.TechnicalSkillMatches.First().MatchKind);
+    }
+
+    [Fact]
+    public void TechnicalSkillMatches_ContainsAliasMatch()
+    {
+        var opportunity = CreateOpportunity("CSharp");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Single(score.TechnicalSkillMatches);
+        Assert.Equal(SkillMatchKind.Alias, score.TechnicalSkillMatches.First().MatchKind);
+    }
+
+    [Fact]
+    public void TechnicalSkillMatches_ContainsNoMatch()
+    {
+        var opportunity = CreateOpportunity("Python");
+        var context = CreateContext(
+            SkillCapability.Create("C#", SkillLevel.Expert));
+
+        var score = OpportunityScorer.Score(opportunity, context);
+
+        Assert.Single(score.TechnicalSkillMatches);
+        Assert.Equal(SkillMatchKind.NoMatch, score.TechnicalSkillMatches.First().MatchKind);
+    }
 }

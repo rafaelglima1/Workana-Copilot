@@ -54,13 +54,38 @@ public class EvaluateOpportunityHandler
 
         var scoringInputs = BuildScoringInputSummary(profile, resolvedRate, analysis);
 
+        var inferredMatches = MatchInferredRequirements(analysis, profile);
+
         return new OpportunityEvaluation
         {
             OpportunityId = id,
             Analysis = analysis,
             Score = score,
-            ScoringInputs = scoringInputs
+            ScoringInputs = scoringInputs,
+            InferredTechnicalRequirementMatches = inferredMatches
         };
+    }
+
+    private static IReadOnlyCollection<InferredTechnicalRequirementMatch> MatchInferredRequirements(
+        OpportunitySemanticAnalysis analysis,
+        FreelancerProfile profile)
+    {
+        var matches = new List<InferredTechnicalRequirementMatch>();
+
+        foreach (var requirement in analysis.TechnicalRequirements)
+        {
+            var match = Domain.Services.SkillMatcher.Match(requirement, profile.Skills);
+            matches.Add(new InferredTechnicalRequirementMatch
+            {
+                Requirement = requirement,
+                MatchedProfileSkill = match.MatchedProfileSkill,
+                CanonicalSkill = match.CanonicalSkill,
+                MatchKind = match.MatchKind,
+                ProfileLevel = match.ProfileLevel
+            });
+        }
+
+        return matches.AsReadOnly();
     }
 
     private static ScoringInputSummary BuildScoringInputSummary(

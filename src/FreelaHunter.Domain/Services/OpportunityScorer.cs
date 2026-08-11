@@ -15,6 +15,7 @@ public static class OpportunityScorer
         weights ??= ScoringWeights.Default;
 
         var technicalFit = CalculateTechnicalFit(opportunity, context);
+        var technicalSkillMatches = GetTechnicalSkillMatches(opportunity, context);
         var economicPotential = CalculateEconomicPotential(opportunity, context);
         var clientQuality = CalculateClientQuality(opportunity);
         var competition = CalculateCompetition(opportunity);
@@ -38,7 +39,8 @@ public static class OpportunityScorer
             clientQuality,
             competition,
             deliveryConfidence,
-            aiLeverage);
+            aiLeverage,
+            technicalSkillMatches);
     }
 
     private static ScoreComponent CalculateTechnicalFit(Opportunity opportunity, OpportunityScoringContext context)
@@ -54,16 +56,20 @@ public static class OpportunityScorer
         var totalScore = 0;
         foreach (var requiredSkill in opportunity.RequiredSkills)
         {
-            var capability = context.Skills.FirstOrDefault(
-                s => string.Equals(s.Name, requiredSkill, StringComparison.OrdinalIgnoreCase));
+            var match = SkillMatcher.Match(requiredSkill, context.Skills);
 
-            if (capability is null)
+            if (match.MatchKind == SkillMatchKind.NoMatch)
             {
                 rules.Add(ScoringRuleCode.MissingRequiredSkill);
             }
             else
             {
-                totalScore += SkillLevelMapping.ToScore(capability.Level);
+                totalScore += SkillLevelMapping.ToScore(match.ProfileLevel!.Value);
+
+                if (match.MatchKind == SkillMatchKind.Alias)
+                    rules.Add(ScoringRuleCode.AliasSkillMatch);
+                else
+                    rules.Add(ScoringRuleCode.ExactSkillMatch);
             }
         }
 
@@ -76,6 +82,13 @@ public static class OpportunityScorer
             rules.Add(ScoringRuleCode.WeakTechnicalFit);
 
         return ScoreComponent.Create(score, ScoringWeights.Default.TechnicalFit, rules);
+    }
+
+    private static IReadOnlyCollection<SkillMatchEvidence> GetTechnicalSkillMatches(
+        Opportunity opportunity,
+        OpportunityScoringContext context)
+    {
+        return SkillMatcher.MatchAll(opportunity.RequiredSkills, context.Skills);
     }
 
     private static ScoreComponent CalculateEconomicPotential(Opportunity opportunity, OpportunityScoringContext context)

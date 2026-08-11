@@ -213,7 +213,17 @@ public static class OpportunityEndpoints
             OpportunityId = evaluation.OpportunityId.Value.ToString(),
             Analysis = MapToAnalysisResponse(evaluation.Analysis),
             ScoringInputs = MapToScoringInputs(evaluation.ScoringInputs),
-            Score = MapToScoreResponse(evaluation.Score)
+            Score = MapToScoreResponse(evaluation.Score),
+            InferredTechnicalRequirementMatches = evaluation.InferredTechnicalRequirementMatches
+                .Select(m => new InferredTechnicalRequirementMatchResponse
+                {
+                    Requirement = m.Requirement,
+                    MatchedProfileSkill = m.MatchedProfileSkill,
+                    CanonicalSkill = m.CanonicalSkill,
+                    MatchKind = m.MatchKind.ToString(),
+                    ProfileLevel = m.ProfileLevel?.ToString()
+                })
+                .ToList()
         };
     }
 
@@ -257,7 +267,18 @@ public static class OpportunityEndpoints
             ClientQuality = MapComponent(score.ClientQuality),
             Competition = MapComponent(score.Competition),
             DeliveryConfidence = MapComponent(score.DeliveryConfidence),
-            AiLeverage = MapComponent(score.AiLeverage)
+            AiLeverage = MapComponent(score.AiLeverage),
+            TechnicalSkillMatches = score.TechnicalSkillMatches
+                .Select(m => new SkillMatchEvidenceResponse
+                {
+                    RequiredSkill = m.RequiredSkill,
+                    MatchedProfileSkill = m.MatchedProfileSkill,
+                    CanonicalSkill = m.CanonicalSkill,
+                    MatchKind = m.MatchKind.ToString(),
+                    ProfileLevel = m.ProfileLevel?.ToString(),
+                    Score = m.Score.Value
+                })
+                .ToList()
         };
     }
 

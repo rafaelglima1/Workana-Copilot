@@ -4,6 +4,8 @@ public enum ScoringRuleCode
 {
     NoRequiredSkills,
     MissingRequiredSkill,
+    ExactSkillMatch,
+    AliasSkillMatch,
     StrongTechnicalFit,
     WeakTechnicalFit,
 

@@ -80,7 +80,18 @@ public class ScoreOpportunityWithProfileHandler
             ClientQuality = MapComponent(score.ClientQuality),
             Competition = MapComponent(score.Competition),
             DeliveryConfidence = MapComponent(score.DeliveryConfidence),
-            AiLeverage = MapComponent(score.AiLeverage)
+            AiLeverage = MapComponent(score.AiLeverage),
+            TechnicalSkillMatches = score.TechnicalSkillMatches
+                .Select(m => new SkillMatchEvidenceResponse
+                {
+                    RequiredSkill = m.RequiredSkill,
+                    MatchedProfileSkill = m.MatchedProfileSkill,
+                    CanonicalSkill = m.CanonicalSkill,
+                    MatchKind = m.MatchKind.ToString(),
+                    ProfileLevel = m.ProfileLevel?.ToString(),
+                    Score = m.Score.Value
+                })
+                .ToList()
         };
     }
 
