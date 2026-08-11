@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CreateManualOpportunityHandler>();
         services.AddSingleton<GetOpportunityByIdHandler>();
         services.AddSingleton<ScoreOpportunity>();
+        services.AddSingleton<AnalyzeOpportunityHandler>();
         return services;
     }
 }

@@ -26,5 +26,9 @@ dotnet test --no-build
 
 - Manual opportunity intake (FHL-003)
 - Deterministic opportunity scoring (FHL-004) — score calculado on-demand, sem LLM
+- MiMo structured opportunity analysis (FHL-005) — análise semântica via LLM, sem score via LLM
 
-Nenhum LLM está conectado. Integrações externas (Workana, Gmail, scraping) ainda **não foram implementadas**.
+Para utilizar análise real, configurar `MiMo__ApiKey` via environment variable ou mecanismo seguro de secrets.
+Provider default: MiMo. Model default: mimo-v2.5. Nenhum LLM é necessário para testes automatizados.
+
+Integrações externas (Workana, Gmail, scraping) ainda **não foram implementadas**.
