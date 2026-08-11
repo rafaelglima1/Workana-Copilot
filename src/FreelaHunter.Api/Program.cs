@@ -13,6 +13,7 @@ app.MapGet("/health", () => Results.Ok("Healthy"))
    .WithName("HealthCheck");
 
 app.MapOpportunityEndpoints();
+app.MapFreelancerProfileEndpoints();
 
 app.Run();
 

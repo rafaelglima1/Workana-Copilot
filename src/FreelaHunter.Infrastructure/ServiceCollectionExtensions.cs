@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         services.AddSingleton<IOpportunityRepository, InMemoryOpportunityRepository>();
+        services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
         return services;
     }
 
@@ -17,6 +18,7 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddSingleton<IOpportunityRepository, InMemoryOpportunityRepository>();
+        services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
 
         services.Configure<MiMoOptions>(
             configuration.GetSection(MiMoOptions.SectionName));

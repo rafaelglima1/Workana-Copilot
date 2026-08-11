@@ -12,6 +12,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GetOpportunityByIdHandler>();
         services.AddSingleton<ScoreOpportunity>();
         services.AddSingleton<AnalyzeOpportunityHandler>();
+        services.AddSingleton<SaveFreelancerProfileHandler>();
+        services.AddSingleton<GetFreelancerProfileHandler>();
+        services.AddSingleton<ScoreOpportunityWithProfileHandler>();
         return services;
     }
 }
