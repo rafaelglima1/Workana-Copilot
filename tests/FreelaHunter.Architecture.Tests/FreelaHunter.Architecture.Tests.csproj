@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FreelaHunter.Domain\FreelaHunter.Domain.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Application\FreelaHunter.Application.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Contracts\FreelaHunter.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Infrastructure\FreelaHunter.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Api\FreelaHunter.Api.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Worker\FreelaHunter.Worker.csproj" />
+    <ProjectReference Include="..\..\src\FreelaHunter.Web\FreelaHunter.Web.csproj" />
+  </ItemGroup>
+
+</Project>

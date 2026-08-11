@@ -1,0 +1,6 @@
+@FreelaHunter.Api_HostAddress = http://localhost:5234
+
+GET {{FreelaHunter.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
