@@ -8,14 +8,14 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
-        services.AddSingleton<CreateManualOpportunityHandler>();
-        services.AddSingleton<GetOpportunityByIdHandler>();
-        services.AddSingleton<ScoreOpportunity>();
-        services.AddSingleton<AnalyzeOpportunityHandler>();
-        services.AddSingleton<SaveFreelancerProfileHandler>();
-        services.AddSingleton<GetFreelancerProfileHandler>();
-        services.AddSingleton<ScoreOpportunityWithProfileHandler>();
-        services.AddSingleton<EvaluateOpportunityHandler>();
+        services.AddScoped<CreateManualOpportunityHandler>();
+        services.AddScoped<GetOpportunityByIdHandler>();
+        services.AddScoped<ScoreOpportunity>();
+        services.AddScoped<AnalyzeOpportunityHandler>();
+        services.AddScoped<SaveFreelancerProfileHandler>();
+        services.AddScoped<GetFreelancerProfileHandler>();
+        services.AddScoped<ScoreOpportunityWithProfileHandler>();
+        services.AddScoped<EvaluateOpportunityHandler>();
         return services;
     }
 }

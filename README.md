@@ -30,6 +30,7 @@ dotnet test --no-build
 - Freelancer profile (FHL-006) — perfil com skills e metas de hourly rate
 - Assisted opportunity evaluation (FHL-007) — pipeline completo: Opportunity → MiMo analysis → Profile → deterministic scoring
 - Deterministic skill intelligence (FHL-008) — SkillNameNormalizer (trim + whitespace collapse), SkillAliasCatalog (13 canonical skills), SkillMatcher (exact + alias matching), profile alias-duplicate rejection
+- SQLite + EF Core local persistence (FHL-009) — Opportunity and FreelancerProfile persisted via EF Core to SQLite, domain entities exposed via `Rehydrate()` methods, automatic migration on startup
 
 Para utilizar análise real, configurar `MiMo__ApiKey` via environment variable ou mecanismo seguro de secrets.
 Provider default: MiMo. Model default: mimo-v2.5. Nenhum LLM é necessário para testes automatizados.

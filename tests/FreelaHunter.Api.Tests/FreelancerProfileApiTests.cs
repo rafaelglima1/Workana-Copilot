@@ -1,45 +1,21 @@
 using System.Net;
 using System.Net.Http.Json;
-using FreelaHunter.Application;
 using FreelaHunter.Contracts.FreelancerProfile;
 using FreelaHunter.Contracts.Opportunities;
-using FreelaHunter.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FreelaHunter.Api.Tests;
 
-public class FreelancerProfileApiTests : IAsyncLifetime
+[Collection("Integration")]
+public class FreelancerProfileApiTests
 {
-    private HttpClient _client = null!;
-
-    public async Task InitializeAsync()
-    {
-        var factory = new WebApplicationFactory<Program>();
-        _client = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IFreelancerProfileRepository));
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-                services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
-            });
-        }).CreateClient();
-        await Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return Task.CompletedTask;
-    }
-
     [Fact]
     public async Task GetProfile_BeforeConfigure_Returns404()
     {
-        var response = await _client.GetAsync("/api/freelancer-profile");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/freelancer-profile");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -47,9 +23,11 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_Valid_Returns200()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
 
-        var response = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var response = await client.PutAsJsonAsync("/api/freelancer-profile", request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -57,10 +35,12 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task GetProfile_AfterPut_Returns200()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
-        await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        await client.PutAsJsonAsync("/api/freelancer-profile", request);
 
-        var response = await _client.GetAsync("/api/freelancer-profile");
+        var response = await client.GetAsync("/api/freelancer-profile");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -68,9 +48,11 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_ReturnsValidProfile()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
 
-        var putResponse = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var putResponse = await client.PutAsJsonAsync("/api/freelancer-profile", request);
         var result = await putResponse.Content.ReadFromJsonAsync<FreelancerProfileResponse>();
 
         Assert.NotNull(result);
@@ -83,11 +65,14 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_PreservesId()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
-        var first = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+
+        var first = await client.PutAsJsonAsync("/api/freelancer-profile", request);
         var firstResult = await first.Content.ReadFromJsonAsync<FreelancerProfileResponse>();
 
-        var second = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var second = await client.PutAsJsonAsync("/api/freelancer-profile", request);
         var secondResult = await second.Content.ReadFromJsonAsync<FreelancerProfileResponse>();
 
         Assert.Equal(firstResult!.Id, secondResult!.Id);
@@ -96,6 +81,8 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_InvalidSkill_Returns400()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = new SaveFreelancerProfileRequest
         {
             Skills = [],
@@ -103,7 +90,7 @@ public class FreelancerProfileApiTests : IAsyncLifetime
             DefaultRateCurrency = "BRL"
         };
 
-        var response = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var response = await client.PutAsJsonAsync("/api/freelancer-profile", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -111,6 +98,8 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_InvalidRate_Returns400()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = new SaveFreelancerProfileRequest
         {
             Skills = [new ProfileSkillInput { Name = "C#", Level = ContractSkillLevel.Expert }],
@@ -118,7 +107,7 @@ public class FreelancerProfileApiTests : IAsyncLifetime
             DefaultRateCurrency = "BRL"
         };
 
-        var response = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var response = await client.PutAsJsonAsync("/api/freelancer-profile", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -126,6 +115,8 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task PutProfile_DefaultCurrencyNotInRates_Returns400()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = new SaveFreelancerProfileRequest
         {
             Skills = [new ProfileSkillInput { Name = "C#", Level = ContractSkillLevel.Expert }],
@@ -133,7 +124,7 @@ public class FreelancerProfileApiTests : IAsyncLifetime
             DefaultRateCurrency = "USD"
         };
 
-        var response = await _client.PutAsJsonAsync("/api/freelancer-profile", request);
+        var response = await client.PutAsJsonAsync("/api/freelancer-profile", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -149,38 +140,16 @@ public class FreelancerProfileApiTests : IAsyncLifetime
     }
 }
 
-public class ScoreWithProfileApiTests : IAsyncLifetime
+[Collection("Integration")]
+public class ScoreWithProfileApiTests
 {
-    private HttpClient _client = null!;
-
-    public async Task InitializeAsync()
-    {
-        var factory = new WebApplicationFactory<Program>();
-        _client = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IFreelancerProfileRepository));
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-                services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
-            });
-        }).CreateClient();
-        await Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return Task.CompletedTask;
-    }
-
     [Fact]
     public async Task ScoreWithProfile_NoProfile_Returns409()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         var scoreRequest = new ScoreOpportunityWithProfileRequest
@@ -190,7 +159,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             AiLeverage = ContractAiLeverage.High
         };
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/score-with-profile", scoreRequest);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -199,7 +168,9 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task ScoreWithProfile_NonExistingOpportunity_Returns404()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+        await SetupProfile(client);
 
         var scoreRequest = new ScoreOpportunityWithProfileRequest
         {
@@ -208,7 +179,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             AiLeverage = ContractAiLeverage.High
         };
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{Guid.NewGuid()}/score-with-profile", scoreRequest);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -217,7 +188,9 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task ScoreWithProfile_InvalidId_Returns400()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+        await SetupProfile(client);
 
         var scoreRequest = new ScoreOpportunityWithProfileRequest
         {
@@ -226,7 +199,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             AiLeverage = ContractAiLeverage.High
         };
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             "/api/opportunities/00000000-0000-0000-0000-000000000000/score-with-profile", scoreRequest);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -235,10 +208,12 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task ScoreWithProfile_FullFlow_Returns200()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+        await SetupProfile(client);
 
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         var scoreRequest = new ScoreOpportunityWithProfileRequest
@@ -248,7 +223,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             AiLeverage = ContractAiLeverage.High
         };
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/score-with-profile", scoreRequest);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -257,10 +232,12 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task ScoreWithProfile_ReturnsValidResponse()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+        await SetupProfile(client);
 
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         var scoreRequest = new ScoreOpportunityWithProfileRequest
@@ -270,7 +247,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             AiLeverage = ContractAiLeverage.High
         };
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/score-with-profile", scoreRequest);
         var result = await response.Content.ReadFromJsonAsync<OpportunityScoreResponse>();
 
@@ -288,19 +265,22 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
     [Fact]
     public async Task ExistingEndpoints_StillWork()
     {
-        var healthResponse = await _client.GetAsync("/health");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var healthResponse = await client.GetAsync("/health");
         Assert.Equal(HttpStatusCode.OK, healthResponse.StatusCode);
 
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         Assert.Equal(HttpStatusCode.Created, postResponse.StatusCode);
 
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
-        var getResponse = await _client.GetAsync($"/api/opportunities/{created!.Id}");
+        var getResponse = await client.GetAsync($"/api/opportunities/{created!.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
-    private async Task SetupProfile()
+    private static async Task SetupProfile(HttpClient client)
     {
         var profileRequest = new SaveFreelancerProfileRequest
         {
@@ -316,7 +296,7 @@ public class ScoreWithProfileApiTests : IAsyncLifetime
             DefaultRateCurrency = "BRL"
         };
 
-        await _client.PutAsJsonAsync("/api/freelancer-profile", profileRequest);
+        await client.PutAsJsonAsync("/api/freelancer-profile", profileRequest);
     }
 
     private static CreateManualOpportunityRequest CreateManualRequest()

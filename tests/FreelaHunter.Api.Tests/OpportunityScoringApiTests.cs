@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FreelaHunter.Api.Tests;
 
-public class OpportunityScoringApiTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Integration")]
+public class OpportunityScoringApiTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public OpportunityScoringApiTests(WebApplicationFactory<Program> factory)
+    public OpportunityScoringApiTests(TestWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

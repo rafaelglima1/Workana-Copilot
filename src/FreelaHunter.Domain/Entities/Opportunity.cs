@@ -173,4 +173,50 @@ public sealed class Opportunity
             .ToList()
             .AsReadOnly();
     }
+
+    public static Opportunity Rehydrate(
+        OpportunityId id,
+        Marketplace marketplace,
+        IntakeChannel intakeChannel,
+        string? externalReference,
+        string title,
+        string description,
+        string? category,
+        string? subcategory,
+        Budget budget,
+        ClientSnapshot client,
+        CompetitionSnapshot competition,
+        IReadOnlyCollection<string> requiredSkills,
+        DateTimeOffset? publishedAt,
+        DateOnly? clientDeadline,
+        DateTimeOffset capturedAt,
+        OpportunityStatus status)
+    {
+        title = NormalizeAndValidateTitle(title);
+        description = NormalizeAndValidateDescription(description);
+        externalReference = NormalizeOptional(externalReference);
+        category = NormalizeOptional(category);
+        subcategory = NormalizeOptional(subcategory);
+        var skills = NormalizeSkills(requiredSkills);
+
+        var opportunity = new Opportunity(
+            id,
+            marketplace,
+            intakeChannel,
+            externalReference,
+            title,
+            description,
+            category,
+            subcategory,
+            budget,
+            client,
+            competition,
+            skills,
+            publishedAt,
+            clientDeadline,
+            capturedAt);
+
+        opportunity.Status = status;
+        return opportunity;
+    }
 }

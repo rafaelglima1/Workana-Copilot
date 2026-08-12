@@ -78,4 +78,25 @@ public class DependencyTests
         var references = ContractsAssembly.GetReferencedAssemblies().Select(a => a.Name);
         Assert.DoesNotContain("FreelaHunter.Domain", references);
     }
+
+    [Fact]
+    public void Domain_Does_Not_Depend_On_EntityFrameworkCore()
+    {
+        var references = DomainAssembly.GetReferencedAssemblies().Select(a => a.Name);
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+    }
+
+    [Fact]
+    public void Application_Does_Not_Depend_On_EntityFrameworkCore()
+    {
+        var references = ApplicationAssembly.GetReferencedAssemblies().Select(a => a.Name);
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+    }
+
+    [Fact]
+    public void Contracts_Does_Not_Depend_On_EntityFrameworkCore()
+    {
+        var references = ContractsAssembly.GetReferencedAssemblies().Select(a => a.Name);
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+    }
 }
