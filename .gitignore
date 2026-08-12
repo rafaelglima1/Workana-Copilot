@@ -50,3 +50,8 @@ coverage*/
 
 ## Publish
 publish/
+
+## SQLite
+*.db
+*.db-shm
+*.db-wal

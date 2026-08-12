@@ -136,4 +136,21 @@ public sealed class FreelancerProfile
         if (!exists)
             throw new DomainException($"DefaultRateCurrency '{defaultCurrency.Value}' must exist in HourlyRateTargets.");
     }
+
+    public static FreelancerProfile Rehydrate(
+        FreelancerProfileId id,
+        IEnumerable<SkillCapability> skills,
+        IEnumerable<HourlyRateTarget> hourlyRateTargets,
+        CurrencyCode defaultRateCurrency)
+    {
+        var distinctSkills = ValidateSkills(skills);
+        var distinctRates = ValidateRates(hourlyRateTargets);
+        ValidateDefaultCurrency(defaultRateCurrency, distinctRates);
+
+        return new FreelancerProfile(
+            id,
+            distinctSkills,
+            distinctRates,
+            defaultRateCurrency);
+    }
 }

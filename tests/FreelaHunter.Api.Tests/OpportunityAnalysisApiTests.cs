@@ -8,35 +8,19 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FreelaHunter.Api.Tests;
 
-public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Integration")]
+public class OpportunityAnalysisApiTests
 {
-    private readonly HttpClient _client;
-    private readonly FakeAnalysisGateway _fakeGateway = new();
-
-    public OpportunityAnalysisApiTests(WebApplicationFactory<Program> factory)
-    {
-        _client = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IOpportunityIntelligenceGateway));
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-
-                services.AddSingleton<IOpportunityIntelligenceGateway>(_fakeGateway);
-            });
-        }).CreateClient();
-    }
-
     [Fact]
     public async Task AnalyzeOpportunity_Existing_Returns200()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -45,11 +29,13 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_ReturnsValidStructure()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityAnalysisResponse>();
 
@@ -67,7 +53,10 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_NonExisting_Returns404()
     {
-        var response = await _client.PostAsJsonAsync(
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{Guid.NewGuid()}/analyze", new { });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -76,7 +65,10 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_InvalidId_Returns400()
     {
-        var response = await _client.PostAsJsonAsync(
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+
+        var response = await client.PostAsJsonAsync(
             "/api/opportunities/00000000-0000-0000-0000-000000000000/analyze", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -85,14 +77,14 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_ProviderFailure_Returns503()
     {
+        await using var factory = new TestWebApplicationFactory();
+        var fakeGateway = new FakeAnalysisGateway { ShouldFail = true, FailType = FailType.Unavailable };
+        using var client = CreateClientWithFakeGateway(factory, fakeGateway);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        _fakeGateway.ShouldFail = true;
-        _fakeGateway.FailType = FailType.Unavailable;
-
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -101,14 +93,14 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_InvalidProviderResponse_Returns502()
     {
+        await using var factory = new TestWebApplicationFactory();
+        var fakeGateway = new FakeAnalysisGateway { ShouldFail = true, FailType = FailType.InvalidResponse };
+        using var client = CreateClientWithFakeGateway(factory, fakeGateway);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        _fakeGateway.ShouldFail = true;
-        _fakeGateway.FailType = FailType.InvalidResponse;
-
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
@@ -117,7 +109,10 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task GetHealth_StillReturns200()
     {
-        var response = await _client.GetAsync("/health");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -125,27 +120,31 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
     [Fact]
     public async Task AnalyzeOpportunity_InputFieldsCorrect()
     {
+        await using var factory = new TestWebApplicationFactory();
+        var fakeGateway = new FakeAnalysisGateway();
+        using var client = CreateClientWithFakeGateway(factory, fakeGateway);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        _fakeGateway.ShouldFail = false;
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.NotNull(_fakeGateway.LastInput);
-        Assert.Equal("Test CRUD Project", _fakeGateway.LastInput!.Title);
+        Assert.NotNull(fakeGateway.LastInput);
+        Assert.Equal("Test CRUD Project", fakeGateway.LastInput!.Title);
     }
 
     [Fact]
     public async Task AnalyzeOpportunity_ReturnsUsageMetadata()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
         var createRequest = CreateManualRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", createRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{created!.Id}/analyze", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityAnalysisResponse>();
 
@@ -156,6 +155,15 @@ public class OpportunityAnalysisApiTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(100, result.Usage.InputTokens);
         Assert.Equal(200, result.Usage.OutputTokens);
         Assert.Equal(300, result.Usage.TotalTokens);
+    }
+
+    private static HttpClient CreateClientWithFakeGateway(
+        TestWebApplicationFactory factory,
+        FakeAnalysisGateway? fakeGateway = null)
+    {
+        fakeGateway ??= new FakeAnalysisGateway();
+        factory.FakeGateway = fakeGateway;
+        return factory.CreateClient();
     }
 
     private static CreateManualOpportunityRequest CreateManualRequest()

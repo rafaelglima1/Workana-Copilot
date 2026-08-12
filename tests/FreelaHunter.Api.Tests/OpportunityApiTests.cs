@@ -5,21 +5,17 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FreelaHunter.Api.Tests;
 
-public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Integration")]
+public class OpportunityApiTests
 {
-    private readonly HttpClient _client;
-
-    public OpportunityApiTests(WebApplicationFactory<Program> factory)
-    {
-        _client = factory.CreateClient();
-    }
-
     [Fact]
     public async Task PostManualOpportunity_Returns201()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
 
-        var response = await _client.PostAsJsonAsync("/api/opportunities/manual", request);
+        var response = await client.PostAsJsonAsync("/api/opportunities/manual", request);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -27,11 +23,13 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task PostManualOpportunity_ReturnsNormalizedResponse()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = CreateValidRequest();
         request.Title = "  Test Project  ";
         request.RequiredSkills = ["  C#  ", "c#"];
 
-        var response = await _client.PostAsJsonAsync("/api/opportunities/manual", request);
+        var response = await client.PostAsJsonAsync("/api/opportunities/manual", request);
         var result = await response.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         Assert.NotNull(result);
@@ -43,6 +41,8 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task PostManualOpportunity_InvalidInput_Returns400()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var request = new CreateManualOpportunityRequest
         {
             Marketplace = ContractMarketplace.Workana,
@@ -50,7 +50,7 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
             Description = "Description"
         };
 
-        var response = await _client.PostAsJsonAsync("/api/opportunities/manual", request);
+        var response = await client.PostAsJsonAsync("/api/opportunities/manual", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -58,11 +58,13 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetOpportunity_Existing_Returns200()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var postRequest = CreateValidRequest();
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", postRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", postRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        var getResponse = await _client.GetAsync($"/api/opportunities/{created!.Id}");
+        var getResponse = await client.GetAsync($"/api/opportunities/{created!.Id}");
 
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
@@ -70,7 +72,10 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetOpportunity_NonExisting_Returns404()
     {
-        var response = await _client.GetAsync($"/api/opportunities/{Guid.NewGuid()}");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/opportunities/{Guid.NewGuid()}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -78,7 +83,10 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetOpportunity_InvalidId_Returns400()
     {
-        var response = await _client.GetAsync("/api/opportunities/00000000-0000-0000-0000-000000000000");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/opportunities/00000000-0000-0000-0000-000000000000");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -86,14 +94,16 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task PostFollowedByGet_ReturnsSameOpportunity()
     {
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var postRequest = CreateValidRequest();
         postRequest.Title = "Integration Test";
         postRequest.Marketplace = ContractMarketplace.Upwork;
 
-        var postResponse = await _client.PostAsJsonAsync("/api/opportunities/manual", postRequest);
+        var postResponse = await client.PostAsJsonAsync("/api/opportunities/manual", postRequest);
         var created = await postResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
-        var getResponse = await _client.GetAsync($"/api/opportunities/{created!.Id}");
+        var getResponse = await client.GetAsync($"/api/opportunities/{created!.Id}");
         var retrieved = await getResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         Assert.NotNull(retrieved);
@@ -107,7 +117,10 @@ public class OpportunityApiTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetHealth_StillReturns200()
     {
-        var response = await _client.GetAsync("/health");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

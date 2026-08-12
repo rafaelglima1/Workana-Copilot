@@ -1,4 +1,7 @@
 using FreelaHunter.Application;
+using FreelaHunter.Infrastructure.Persistence;
+using FreelaHunter.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,8 +20,15 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddSingleton<IOpportunityRepository, InMemoryOpportunityRepository>();
-        services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
+        var connectionString = configuration.GetConnectionString("FreelaHunter")
+            ?? "Data Source=freelahunter.db";
+
+        services.AddDbContext<FreelaHunterDbContext>(options =>
+            options.UseSqlite(connectionString));
+
+        services.AddScoped<IOpportunityRepository, EfOpportunityRepository>();
+        services.AddScoped<IFreelancerProfileRepository, EfFreelancerProfileRepository>();
+        services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 
         services.Configure<MiMoOptions>(
             configuration.GetSection(MiMoOptions.SectionName));

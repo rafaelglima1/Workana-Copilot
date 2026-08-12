@@ -10,46 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FreelaHunter.Api.Tests;
 
-public class OpportunityEvaluationApiTests : IAsyncLifetime
+[Collection("Integration")]
+public class OpportunityEvaluationApiTests
 {
-    private HttpClient _client = null!;
-
-    public async Task InitializeAsync()
-    {
-        var factory = new WebApplicationFactory<Program>();
-        _client = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IFreelancerProfileRepository));
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-                services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
-
-                var gatewayDescriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(IOpportunityIntelligenceGateway));
-                if (gatewayDescriptor is not null)
-                    services.Remove(gatewayDescriptor);
-                services.AddSingleton<IOpportunityIntelligenceGateway, FakeApiIntelligenceGateway>();
-            });
-        }).CreateClient();
-        await Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        return Task.CompletedTask;
-    }
-
     [Fact]
     public async Task Evaluate_HappyPath_Returns200()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -58,10 +30,12 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_HasAnalysis()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityEvaluationResponse>();
 
@@ -73,10 +47,12 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_HasScore()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityEvaluationResponse>();
 
@@ -89,10 +65,12 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_HasScoringInputs()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityEvaluationResponse>();
 
@@ -105,10 +83,12 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_HasSources()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
         var result = await response.Content.ReadFromJsonAsync<OpportunityEvaluationResponse>();
 
@@ -124,9 +104,11 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_InvalidId_Returns400()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             "/api/opportunities/00000000-0000-0000-0000-000000000000/evaluate", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -135,9 +117,11 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_NonExistingOpportunity_Returns404()
     {
-        await SetupProfile();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{Guid.NewGuid()}/evaluate", new { });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -146,9 +130,11 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_NoProfile_Returns409()
     {
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        var opportunityId = await CreateOpportunity(client);
 
-        var response = await _client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -157,27 +143,41 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
     [Fact]
     public async Task Evaluate_Health_Returns200()
     {
-        var response = await _client.GetAsync("/health");
+        await using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task Evaluate_OpportunityNotModified()
     {
-        await SetupProfile();
-        var opportunityId = await CreateOpportunity();
+        await using var factory = new TestWebApplicationFactory();
+        using var client = CreateClientWithFakeGateway(factory);
+        await SetupProfile(client);
+        var opportunityId = await CreateOpportunity(client);
 
-        await _client.PostAsJsonAsync(
+        await client.PostAsJsonAsync(
             $"/api/opportunities/{opportunityId}/evaluate", new { });
 
-        var getResponse = await _client.GetAsync($"/api/opportunities/{opportunityId}");
+        var getResponse = await client.GetAsync($"/api/opportunities/{opportunityId}");
         var opportunity = await getResponse.Content.ReadFromJsonAsync<OpportunityResponse>();
 
         Assert.NotNull(opportunity);
         Assert.Equal("Test Evaluate API", opportunity!.Title);
     }
 
-    private async Task SetupProfile()
+    private static HttpClient CreateClientWithFakeGateway(
+        TestWebApplicationFactory factory,
+        IOpportunityIntelligenceGateway? gateway = null)
+    {
+        gateway ??= new FakeApiIntelligenceGateway();
+        factory.FakeGateway = gateway;
+        return factory.CreateClient();
+    }
+
+    private static async Task SetupProfile(HttpClient client)
     {
         var profileRequest = new SaveFreelancerProfileRequest
         {
@@ -193,10 +193,10 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
             DefaultRateCurrency = "BRL"
         };
 
-        await _client.PutAsJsonAsync("/api/freelancer-profile", profileRequest);
+        await client.PutAsJsonAsync("/api/freelancer-profile", profileRequest);
     }
 
-    private async Task<Guid> CreateOpportunity()
+    private static async Task<Guid> CreateOpportunity(HttpClient client)
     {
         var request = new CreateManualOpportunityRequest
         {
@@ -214,7 +214,7 @@ public class OpportunityEvaluationApiTests : IAsyncLifetime
             RequiredSkills = ["C#", "API", "Flutter"]
         };
 
-        var response = await _client.PostAsJsonAsync("/api/opportunities/manual", request);
+        var response = await client.PostAsJsonAsync("/api/opportunities/manual", request);
         var created = await response.Content.ReadFromJsonAsync<OpportunityResponse>();
         return created!.Id;
     }
