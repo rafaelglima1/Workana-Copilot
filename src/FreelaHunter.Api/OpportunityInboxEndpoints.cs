@@ -111,6 +111,107 @@ public static class OpportunityInboxEndpoints
         .Produces<OpportunityResponse>((int)HttpStatusCode.OK)
         .Produces((int)HttpStatusCode.NotFound)
         .ProducesProblem((int)HttpStatusCode.BadRequest);
+        app.MapGet("/api/opportunities/{id:guid}/evaluation", async (
+            Guid id,
+            [FromServices] IOpportunityEvaluationSnapshotRepository snapshotRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var snapshot = await snapshotRepository.GetLatestAsync(id, cancellationToken);
+            if (snapshot is null)
+                return Results.NotFound();
+
+            return Results.Ok(MapToEvaluationResponse(snapshot));
+        })
+        .WithName("GetOpportunityEvaluation")
+        .Produces<OpportunityEvaluationResponse>((int)HttpStatusCode.OK)
+        .Produces((int)HttpStatusCode.NotFound);
+    }
+
+    private static OpportunityEvaluationResponse MapToEvaluationResponse(
+        OpportunityEvaluationSnapshot snapshot)
+    {
+        return new OpportunityEvaluationResponse
+        {
+            OpportunityId = snapshot.OpportunityId.ToString(),
+            Analysis = new OpportunityAnalysisResponse
+            {
+                EstimatedHours = snapshot.Analysis.EstimatedHours,
+                DeliveryRisk = snapshot.Analysis.DeliveryRisk.ToString(),
+                AiLeverage = snapshot.Analysis.AiLeverage.ToString(),
+                Confidence = snapshot.Analysis.Confidence.ToString(),
+                TechnicalRequirements = [.. snapshot.Analysis.TechnicalRequirements],
+                RiskFactors = [.. snapshot.Analysis.RiskFactors],
+                AiLeverageReasons = [.. snapshot.Analysis.AiLeverageReasons],
+                ClarifyingQuestions = [.. snapshot.Analysis.ClarifyingQuestions],
+                Usage = snapshot.Analysis.Usage is not null
+                    ? new LlmUsageResponse
+                    {
+                        InputTokens = snapshot.Analysis.Usage.InputTokens,
+                        OutputTokens = snapshot.Analysis.Usage.OutputTokens,
+                        TotalTokens = snapshot.Analysis.Usage.TotalTokens,
+                        Provider = snapshot.Analysis.Usage.Provider,
+                        Model = snapshot.Analysis.Usage.Model
+                    }
+                    : null
+            },
+            ScoringInputs = new ScoringInputSummaryResponse
+            {
+                ProfileSkills = snapshot.ScoringInputs.ProfileSkills
+                    .Select(s => new SkillCapabilitySummaryResponse
+                    {
+                        Name = s.Name,
+                        Level = s.Level
+                    })
+                    .ToList(),
+                TargetHourlyRate = new HourlyRateSummaryResponse
+                {
+                    Amount = snapshot.ScoringInputs.TargetHourlyRate.Amount,
+                    Currency = snapshot.ScoringInputs.TargetHourlyRate.Currency
+                },
+                EstimatedHours = snapshot.ScoringInputs.EstimatedHours,
+                DeliveryRisk = snapshot.ScoringInputs.DeliveryRisk.ToString(),
+                AiLeverage = snapshot.ScoringInputs.AiLeverage.ToString(),
+                TechnicalFitSource = snapshot.ScoringInputs.TechnicalFitSource,
+                EstimatedHoursSource = snapshot.ScoringInputs.EstimatedHoursSource,
+                DeliveryRiskSource = snapshot.ScoringInputs.DeliveryRiskSource,
+                AiLeverageSource = snapshot.ScoringInputs.AiLeverageSource,
+                TargetHourlyRateSource = snapshot.ScoringInputs.TargetHourlyRateSource
+            },
+            Score = new OpportunityScoreResponse
+            {
+                Overall = snapshot.Score.Overall.Value,
+                Recommendation = snapshot.Score.Recommendation.ToString(),
+                TechnicalFit = MapScoreComponent(snapshot.Score.TechnicalFit),
+                EconomicPotential = MapScoreComponent(snapshot.Score.EconomicPotential),
+                ClientQuality = MapScoreComponent(snapshot.Score.ClientQuality),
+                Competition = MapScoreComponent(snapshot.Score.Competition),
+                DeliveryConfidence = MapScoreComponent(snapshot.Score.DeliveryConfidence),
+                AiLeverage = MapScoreComponent(snapshot.Score.AiLeverage),
+                TechnicalSkillMatches = snapshot.Score.TechnicalSkillMatches
+                    .Select(m => new SkillMatchEvidenceResponse
+                    {
+                        RequiredSkill = m.RequiredSkill,
+                        MatchedProfileSkill = m.MatchedProfileSkill,
+                        CanonicalSkill = m.CanonicalSkill,
+                        MatchKind = m.MatchKind.ToString(),
+                        ProfileLevel = m.ProfileLevel?.ToString(),
+                        Score = m.Score.Value
+                    })
+                    .ToList()
+            }
+        };
+    }
+
+    private static ScoreComponentResponse MapScoreComponent(
+        FreelaHunter.Domain.ValueObjects.ScoreComponent component)
+    {
+        return new ScoreComponentResponse
+        {
+            Score = component.Score.Value,
+            Weight = component.Weight,
+            WeightedContribution = component.WeightedContribution,
+            Rules = component.Rules.Select(r => r.ToString()).ToList()
+        };
     }
 
     private static OpportunityQueryCriteria MapCriteria(OpportunityListRequest request)
@@ -133,7 +234,13 @@ public static class OpportunityInboxEndpoints
             CapturedTo = request.CapturedTo,
             Sort = request.Sort.HasValue
                 ? MapSort(request.Sort.Value)
-                : OpportunitySort.CapturedAtDesc
+                : OpportunitySort.CapturedAtDesc,
+            Evaluated = request.Evaluated,
+            Recommendation = string.IsNullOrEmpty(request.Recommendation)
+                ? null
+                : MapRecommendation(request.Recommendation),
+            MinScore = request.MinScore,
+            MaxScore = request.MaxScore
         };
     }
 
@@ -167,7 +274,20 @@ public static class OpportunityInboxEndpoints
         ContractOpportunitySort.PublishedAtAsc => OpportunitySort.PublishedAtAsc,
         ContractOpportunitySort.TitleAsc => OpportunitySort.TitleAsc,
         ContractOpportunitySort.TitleDesc => OpportunitySort.TitleDesc,
+        ContractOpportunitySort.OverallAsc => OpportunitySort.OverallAsc,
+        ContractOpportunitySort.OverallDesc => OpportunitySort.OverallDesc,
+        ContractOpportunitySort.EvaluatedAtAsc => OpportunitySort.EvaluatedAtAsc,
+        ContractOpportunitySort.EvaluatedAtDesc => OpportunitySort.EvaluatedAtDesc,
         _ => OpportunitySort.CapturedAtDesc
+    };
+
+    private static OpportunityRecommendation MapRecommendation(string value) => value switch
+    {
+        "Prioritize" => OpportunityRecommendation.Prioritize,
+        "Apply" => OpportunityRecommendation.Apply,
+        "ConsiderWithCaution" => OpportunityRecommendation.ConsiderWithCaution,
+        "Skip" => OpportunityRecommendation.Skip,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Invalid recommendation value.")
     };
 
     private static PagedOpportunityResponse MapToPagedResponse(PagedResult<OpportunityInboxItem> result)
@@ -219,7 +339,17 @@ public static class OpportunityInboxEndpoints
             PublishedAt = item.PublishedAt,
             ClientDeadline = item.ClientDeadline,
             CapturedAt = item.CapturedAt,
-            Status = MapToContractStatus(item.Status)
+            Status = MapToContractStatus(item.Status),
+            LatestEvaluation = item.LatestEvaluation is not null
+                ? new EvaluationSummaryResponse
+                {
+                    Evaluated = item.LatestEvaluation.Evaluated,
+                    EvaluatedAt = item.LatestEvaluation.EvaluatedAt,
+                    Recommendation = item.LatestEvaluation.Recommendation,
+                    OverallScore = item.LatestEvaluation.OverallScore,
+                    IsStale = item.LatestEvaluation.IsStale
+                }
+                : null
         };
     }
 
@@ -293,6 +423,18 @@ public sealed class OpportunityListRequest
 
     [FromQuery(Name = "sort")]
     public ContractOpportunitySort? Sort { get; set; }
+
+    [FromQuery(Name = "evaluated")]
+    public bool? Evaluated { get; set; }
+
+    [FromQuery(Name = "recommendation")]
+    public string? Recommendation { get; set; }
+
+    [FromQuery(Name = "minScore")]
+    public decimal? MinScore { get; set; }
+
+    [FromQuery(Name = "maxScore")]
+    public decimal? MaxScore { get; set; }
 }
 
 public enum ContractOpportunitySort
@@ -302,5 +444,9 @@ public enum ContractOpportunitySort
     PublishedAtDesc = 2,
     PublishedAtAsc = 3,
     TitleAsc = 4,
-    TitleDesc = 5
+    TitleDesc = 5,
+    OverallAsc = 6,
+    OverallDesc = 7,
+    EvaluatedAtAsc = 8,
+    EvaluatedAtDesc = 9
 }

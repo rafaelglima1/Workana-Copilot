@@ -11,15 +11,21 @@ public class EvaluateOpportunityHandler
     private readonly IOpportunityRepository _opportunityRepository;
     private readonly IFreelancerProfileRepository _profileRepository;
     private readonly IOpportunityIntelligenceGateway _gateway;
+    private readonly IOpportunityEvaluationSnapshotRepository _snapshotRepository;
+    private readonly TimeProvider _timeProvider;
 
     public EvaluateOpportunityHandler(
         IOpportunityRepository opportunityRepository,
         IFreelancerProfileRepository profileRepository,
-        IOpportunityIntelligenceGateway gateway)
+        IOpportunityIntelligenceGateway gateway,
+        IOpportunityEvaluationSnapshotRepository snapshotRepository,
+        TimeProvider timeProvider)
     {
         _opportunityRepository = opportunityRepository;
         _profileRepository = profileRepository;
         _gateway = gateway;
+        _snapshotRepository = snapshotRepository;
+        _timeProvider = timeProvider;
     }
 
     public async Task<OpportunityEvaluation?> HandleAsync(
@@ -56,7 +62,10 @@ public class EvaluateOpportunityHandler
 
         var inferredMatches = MatchInferredRequirements(analysis, profile);
 
-        return new OpportunityEvaluation
+        var evaluatedAt = _timeProvider.GetUtcNow();
+        var fingerprint = FreelancerProfileFingerprintCalculator.Calculate(profile);
+
+        var evaluation = new OpportunityEvaluation
         {
             OpportunityId = id,
             Analysis = analysis,
@@ -64,6 +73,25 @@ public class EvaluateOpportunityHandler
             ScoringInputs = scoringInputs,
             InferredTechnicalRequirementMatches = inferredMatches
         };
+
+        var snapshot = new OpportunityEvaluationSnapshot
+        {
+            OpportunityId = id.Value,
+            ProfileId = profile.Id.Value,
+            ProfileFingerprint = fingerprint,
+            EvaluatedAt = evaluatedAt,
+            Evaluated = true,
+            Recommendation = score.Recommendation,
+            OverallScore = score.Overall.Value,
+            Analysis = analysis,
+            Score = score,
+            ScoringInputs = scoringInputs,
+            IsStale = false
+        };
+
+        await _snapshotRepository.SaveLatestAsync(snapshot, cancellationToken);
+
+        return evaluation;
     }
 
     private static IReadOnlyCollection<InferredTechnicalRequirementMatch> MatchInferredRequirements(

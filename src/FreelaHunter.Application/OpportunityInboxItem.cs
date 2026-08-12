@@ -29,4 +29,14 @@ public sealed class OpportunityInboxItem
     public DateOnly? ClientDeadline { get; init; }
     public DateTimeOffset CapturedAt { get; init; }
     public OpportunityStatus Status { get; init; }
+    public OpportunityInboxItemEvaluationSummary? LatestEvaluation { get; init; }
+}
+
+public sealed record OpportunityInboxItemEvaluationSummary
+{
+    public bool Evaluated { get; init; }
+    public DateTimeOffset? EvaluatedAt { get; init; }
+    public string Recommendation { get; init; } = string.Empty;
+    public decimal OverallScore { get; init; }
+    public bool IsStale { get; init; }
 }

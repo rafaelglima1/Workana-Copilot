@@ -10,6 +10,7 @@ public sealed class FreelaHunterDbContext : DbContext
     public DbSet<FreelancerProfileRecord> FreelancerProfiles => Set<FreelancerProfileRecord>();
     public DbSet<FreelancerProfileSkillRecord> FreelancerProfileSkills => Set<FreelancerProfileSkillRecord>();
     public DbSet<FreelancerHourlyRateRecord> FreelancerHourlyRates => Set<FreelancerHourlyRateRecord>();
+    public DbSet<OpportunityEvaluationSnapshotRecord> OpportunityEvaluationSnapshots => Set<OpportunityEvaluationSnapshotRecord>();
 
     public FreelaHunterDbContext(DbContextOptions<FreelaHunterDbContext> options)
         : base(options)
@@ -69,6 +70,21 @@ public sealed class FreelaHunterDbContext : DbContext
                 .HasForeignKey(x => x.FreelancerProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Currency).HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<OpportunityEvaluationSnapshotRecord>(e =>
+        {
+            e.HasKey(x => x.OpportunityId);
+            e.HasOne(x => x.Opportunity)
+                .WithMany()
+                .HasForeignKey(x => x.OpportunityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.ProfileFingerprint).HasMaxLength(64);
+            e.Property(x => x.Recommendation).HasMaxLength(50);
+            e.Property(x => x.PayloadJson).HasMaxLength(50000);
+            e.HasIndex(x => x.EvaluatedAtUtc);
+            e.HasIndex(x => x.Recommendation);
+            e.HasIndex(x => x.OverallScore);
         });
     }
 }

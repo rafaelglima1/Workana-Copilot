@@ -69,6 +69,52 @@ namespace FreelaHunter.Infrastructure.Migrations
                     b.ToTable("FreelancerProfileSkills");
                 });
 
+            modelBuilder.Entity("FreelaHunter.Infrastructure.Persistence.Models.OpportunityEvaluationSnapshotRecord", b =>
+                {
+                    b.Property<Guid>("OpportunityId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Evaluated")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("EvaluatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("OverallScore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasMaxLength(50000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PayloadSchemaVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProfileFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Recommendation")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("OpportunityId");
+
+                    b.HasIndex("EvaluatedAtUtc");
+
+                    b.HasIndex("OverallScore");
+
+                    b.HasIndex("Recommendation");
+
+                    b.ToTable("OpportunityEvaluationSnapshots");
+                });
+
             modelBuilder.Entity("FreelaHunter.Infrastructure.Persistence.Models.OpportunityRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -214,6 +260,17 @@ namespace FreelaHunter.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("FreelancerProfile");
+                });
+
+            modelBuilder.Entity("FreelaHunter.Infrastructure.Persistence.Models.OpportunityEvaluationSnapshotRecord", b =>
+                {
+                    b.HasOne("FreelaHunter.Infrastructure.Persistence.Models.OpportunityRecord", "Opportunity")
+                        .WithMany()
+                        .HasForeignKey("OpportunityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Opportunity");
                 });
 
             modelBuilder.Entity("FreelaHunter.Infrastructure.Persistence.Models.OpportunitySkillRecord", b =>

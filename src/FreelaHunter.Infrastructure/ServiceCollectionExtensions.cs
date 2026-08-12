@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IOpportunityRepository, EfOpportunityRepository>();
         services.AddScoped<IOpportunityQueryRepository, EfOpportunityQueryRepository>();
+        services.AddScoped<IOpportunityEvaluationSnapshotRepository, EfOpportunityEvaluationSnapshotRepository>();
         services.AddScoped<IFreelancerProfileRepository, EfFreelancerProfileRepository>();
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 

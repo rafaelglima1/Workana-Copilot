@@ -19,4 +19,14 @@ public sealed class OpportunityInboxItemResponse
     public DateOnly? ClientDeadline { get; set; }
     public DateTimeOffset CapturedAt { get; set; }
     public ContractOpportunityStatus Status { get; set; }
+    public EvaluationSummaryResponse? LatestEvaluation { get; set; }
+}
+
+public sealed class EvaluationSummaryResponse
+{
+    public bool Evaluated { get; set; }
+    public DateTimeOffset? EvaluatedAt { get; set; }
+    public string Recommendation { get; set; } = string.Empty;
+    public decimal OverallScore { get; set; }
+    public bool IsStale { get; set; }
 }

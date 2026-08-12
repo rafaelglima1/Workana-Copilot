@@ -10,9 +10,11 @@ public class EvaluateOpportunityTests
     private readonly FakeOpportunityRepository _opportunityRepository = new();
     private readonly FakeFreelancerProfileRepository _profileRepository = new();
     private readonly FakeIntelligenceGateway _gateway = new();
+    private readonly FakeOpportunityEvaluationSnapshotRepository _snapshotRepository = new();
+    private static readonly TimeProvider TimeProvider = TimeProvider.System;
 
     private EvaluateOpportunityHandler CreateHandler() =>
-        new(_opportunityRepository, _profileRepository, _gateway);
+        new(_opportunityRepository, _profileRepository, _gateway, _snapshotRepository, TimeProvider);
 
     private async Task<Opportunity> CreateAndStoreOpportunity(
         CurrencyCode? currency = null,
@@ -231,7 +233,7 @@ public class EvaluateOpportunityTests
         var failingGateway = new FakeIntelligenceGateway((input, ct) =>
             throw new OpportunityIntelligenceUnavailableException("Provider unavailable"));
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, failingGateway);
+            _opportunityRepository, _profileRepository, failingGateway, _snapshotRepository, TimeProvider);
 
         await Assert.ThrowsAsync<OpportunityIntelligenceUnavailableException>(
             () => handler.HandleAsync(opportunity.Id.Value, CancellationToken.None));
@@ -245,7 +247,7 @@ public class EvaluateOpportunityTests
         var failingGateway = new FakeIntelligenceGateway((input, ct) =>
             throw new OpportunityIntelligenceUnavailableException("Provider unavailable"));
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, failingGateway);
+            _opportunityRepository, _profileRepository, failingGateway, _snapshotRepository, TimeProvider);
 
         try
         {
@@ -318,7 +320,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithExtraReqs);
+            _opportunityRepository, _profileRepository, gatewayWithExtraReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -497,7 +499,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, balanceGateway);
+            _opportunityRepository, _profileRepository, balanceGateway, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -548,7 +550,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithReqs);
+            _opportunityRepository, _profileRepository, gatewayWithReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -582,7 +584,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithReqs);
+            _opportunityRepository, _profileRepository, gatewayWithReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -616,7 +618,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithReqs);
+            _opportunityRepository, _profileRepository, gatewayWithReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -650,7 +652,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithReqs);
+            _opportunityRepository, _profileRepository, gatewayWithReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 
@@ -684,7 +686,7 @@ public class EvaluateOpportunityTests
         });
 
         var handler = new EvaluateOpportunityHandler(
-            _opportunityRepository, _profileRepository, gatewayWithReqs);
+            _opportunityRepository, _profileRepository, gatewayWithReqs, _snapshotRepository, TimeProvider);
 
         var result = await handler.HandleAsync(opportunity.Id.Value, CancellationToken.None);
 

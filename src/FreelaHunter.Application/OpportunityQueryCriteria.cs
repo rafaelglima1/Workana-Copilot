@@ -13,4 +13,8 @@ public sealed class OpportunityQueryCriteria
     public DateTimeOffset? CapturedFrom { get; init; }
     public DateTimeOffset? CapturedTo { get; init; }
     public OpportunitySort Sort { get; init; } = OpportunitySort.CapturedAtDesc;
+    public bool? Evaluated { get; init; }
+    public OpportunityRecommendation? Recommendation { get; init; }
+    public decimal? MinScore { get; init; }
+    public decimal? MaxScore { get; init; }
 }

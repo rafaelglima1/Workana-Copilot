@@ -47,8 +47,18 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
                 g => g.Select(s => s.Skill).ToList(),
                 cancellationToken);
 
+        var snapshotLookup = await _context.Set<OpportunityEvaluationSnapshotRecord>()
+            .AsNoTracking()
+            .Where(s => pagedIds.Contains(s.OpportunityId))
+            .ToDictionaryAsync(
+                s => s.OpportunityId,
+                s => s,
+                cancellationToken);
+
+        var profileFingerprint = await GetCurrentProfileFingerprint(cancellationToken);
+
         var items = pagedRecords
-            .Select(record => MapToInboxItem(record, skillsLookup))
+            .Select(record => MapToInboxItem(record, skillsLookup, snapshotLookup, profileFingerprint))
             .ToList();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / criteria.PageSize);
@@ -63,7 +73,22 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
         };
     }
 
-    private static IQueryable<OpportunityRecord> ApplyFilters(
+    private async Task<string?> GetCurrentProfileFingerprint(CancellationToken cancellationToken)
+    {
+        var profileRecord = await _context.FreelancerProfiles
+            .AsNoTracking()
+            .Include(p => p.Skills)
+            .Include(p => p.HourlyRates)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (profileRecord is null)
+            return null;
+
+        var profile = FreelancerProfilePersistenceMapper.ToDomain(profileRecord);
+        return FreelancerProfileFingerprintCalculator.Calculate(profile);
+    }
+
+    private IQueryable<OpportunityRecord> ApplyFilters(
         IQueryable<OpportunityRecord> query,
         OpportunityQueryCriteria criteria)
     {
@@ -85,10 +110,48 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
             query = query.Where(o => o.Status == status);
         }
 
+        if (criteria.Evaluated.HasValue)
+        {
+            if (criteria.Evaluated.Value)
+            {
+                query = query.Where(o =>
+                    _context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id && s.Evaluated));
+            }
+            else
+            {
+                query = query.Where(o =>
+                    !_context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id && s.Evaluated));
+            }
+        }
+
+        if (criteria.Recommendation.HasValue)
+        {
+            var recommendation = criteria.Recommendation.Value.ToString();
+            query = query.Where(o =>
+                _context.Set<OpportunityEvaluationSnapshotRecord>()
+                    .Any(s => s.OpportunityId == o.Id && s.Recommendation == recommendation));
+        }
+
+        if (criteria.MinScore.HasValue)
+        {
+            query = query.Where(o =>
+                _context.Set<OpportunityEvaluationSnapshotRecord>()
+                    .Any(s => s.OpportunityId == o.Id && s.OverallScore >= criteria.MinScore.Value));
+        }
+
+        if (criteria.MaxScore.HasValue)
+        {
+            query = query.Where(o =>
+                _context.Set<OpportunityEvaluationSnapshotRecord>()
+                    .Any(s => s.OpportunityId == o.Id && s.OverallScore <= criteria.MaxScore.Value));
+        }
+
         return query;
     }
 
-    private static IQueryable<OpportunityRecord> ApplyDateFilters(
+    private IQueryable<OpportunityRecord> ApplyDateFilters(
         IQueryable<OpportunityRecord> query,
         OpportunityQueryCriteria criteria)
     {
@@ -107,7 +170,7 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
         return query;
     }
 
-    private static IQueryable<OpportunityRecord> ApplySearch(
+    private IQueryable<OpportunityRecord> ApplySearch(
         IQueryable<OpportunityRecord> query,
         string? search)
     {
@@ -127,7 +190,7 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
         return query;
     }
 
-    private static IQueryable<OpportunityRecord> ApplySort(
+    private IQueryable<OpportunityRecord> ApplySort(
         IQueryable<OpportunityRecord> query,
         OpportunitySort sort)
     {
@@ -143,17 +206,63 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
                 .ThenBy(o => o.PublishedAtUtc),
             OpportunitySort.TitleAsc => query.OrderBy(o => o.Title),
             OpportunitySort.TitleDesc => query.OrderByDescending(o => o.Title),
+            OpportunitySort.OverallAsc => query
+                .OrderBy(o =>
+                    _context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id)
+                        ? _context.Set<OpportunityEvaluationSnapshotRecord>()
+                            .First(s => s.OpportunityId == o.Id).OverallScore
+                        : -1m),
+            OpportunitySort.OverallDesc => query
+                .OrderByDescending(o =>
+                    _context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id)
+                        ? _context.Set<OpportunityEvaluationSnapshotRecord>()
+                            .First(s => s.OpportunityId == o.Id).OverallScore
+                        : -1m),
+            OpportunitySort.EvaluatedAtAsc => query
+                .OrderBy(o =>
+                    _context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id)
+                        ? _context.Set<OpportunityEvaluationSnapshotRecord>()
+                            .First(s => s.OpportunityId == o.Id).EvaluatedAtUtc
+                        : DateTime.MaxValue),
+            OpportunitySort.EvaluatedAtDesc => query
+                .OrderByDescending(o =>
+                    _context.Set<OpportunityEvaluationSnapshotRecord>()
+                        .Any(s => s.OpportunityId == o.Id)
+                        ? _context.Set<OpportunityEvaluationSnapshotRecord>()
+                            .First(s => s.OpportunityId == o.Id).EvaluatedAtUtc
+                        : DateTime.MaxValue),
             _ => query.OrderByDescending(o => o.CapturedAtUtc)
         };
     }
 
     private static OpportunityInboxItem MapToInboxItem(
         OpportunityRecord record,
-        Dictionary<Guid, List<string>> skillsLookup)
+        Dictionary<Guid, List<string>> skillsLookup,
+        Dictionary<Guid, OpportunityEvaluationSnapshotRecord> snapshotLookup,
+        string? profileFingerprint)
     {
         var skills = skillsLookup.TryGetValue(record.Id, out var s)
             ? s.AsReadOnly()
             : Array.Empty<string>().AsReadOnly();
+
+        OpportunityInboxItemEvaluationSummary? evaluationSummary = null;
+        if (snapshotLookup.TryGetValue(record.Id, out var snapshot))
+        {
+            var isStale = profileFingerprint is not null &&
+                          snapshot.ProfileFingerprint != profileFingerprint;
+
+            evaluationSummary = new OpportunityInboxItemEvaluationSummary
+            {
+                Evaluated = snapshot.Evaluated,
+                EvaluatedAt = new DateTimeOffset(snapshot.EvaluatedAtUtc, TimeSpan.Zero),
+                Recommendation = snapshot.Recommendation,
+                OverallScore = snapshot.OverallScore,
+                IsStale = isStale
+            };
+        }
 
         return new OpportunityInboxItem
         {
@@ -183,7 +292,8 @@ public sealed class EfOpportunityQueryRepository : IOpportunityQueryRepository
                 : (DateTimeOffset?)null,
             ClientDeadline = record.ClientDeadline,
             CapturedAt = new DateTimeOffset(record.CapturedAtUtc, TimeSpan.Zero),
-            Status = Enum.Parse<OpportunityStatus>(record.Status)
+            Status = Enum.Parse<OpportunityStatus>(record.Status),
+            LatestEvaluation = evaluationSummary
         };
     }
 }
