@@ -8,6 +8,7 @@ internal sealed class FakeOpportunityRepository : IOpportunityRepository
     private readonly Dictionary<Guid, Opportunity> _store = [];
 
     public List<Opportunity> AddedOpportunities { get; } = [];
+    public List<Opportunity> UpdatedOpportunities { get; } = [];
 
     public Task AddAsync(Opportunity opportunity, CancellationToken cancellationToken)
     {
@@ -20,5 +21,12 @@ internal sealed class FakeOpportunityRepository : IOpportunityRepository
     {
         _store.TryGetValue(id.Value, out var opportunity);
         return Task.FromResult(opportunity);
+    }
+
+    public Task UpdateAsync(Opportunity opportunity, CancellationToken cancellationToken)
+    {
+        _store[opportunity.Id.Value] = opportunity;
+        UpdatedOpportunities.Add(opportunity);
+        return Task.CompletedTask;
     }
 }

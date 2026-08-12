@@ -31,6 +31,16 @@ dotnet test --no-build
 - Assisted opportunity evaluation (FHL-007) — pipeline completo: Opportunity → MiMo analysis → Profile → deterministic scoring
 - Deterministic skill intelligence (FHL-008) — SkillNameNormalizer (trim + whitespace collapse), SkillAliasCatalog (13 canonical skills), SkillMatcher (exact + alias matching), profile alias-duplicate rejection
 - SQLite + EF Core local persistence (FHL-009) — Opportunity and FreelancerProfile persisted via EF Core to SQLite, domain entities exposed via `Rehydrate()` methods, automatic migration on startup
+- Opportunity Inbox workflow (FHL-010) — paginated listing, search, filters, sorting, status transitions (Shortlist/Ignore/Archive)
+
+API endpoints:
+
+- `GET /api/opportunities` — inbox listing with pagination, search, filters, sorting
+- `POST /api/opportunities/{id}/shortlist` — transition to Shortlisted
+- `POST /api/opportunities/{id}/ignore` — transition to Ignored
+- `POST /api/opportunities/{id}/archive` — transition to Archived (terminal)
+
+Score e evaluation ainda são on-demand e não aparecem na Inbox persistida.
 
 Para utilizar análise real, configurar `MiMo__ApiKey` via environment variable ou mecanismo seguro de secrets.
 Provider default: MiMo. Model default: mimo-v2.5. Nenhum LLM é necessário para testes automatizados.

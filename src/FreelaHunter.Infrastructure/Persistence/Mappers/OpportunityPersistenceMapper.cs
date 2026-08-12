@@ -101,4 +101,19 @@ public static class OpportunityPersistenceMapper
             record.CapturedAt,
             status);
     }
+
+    public static void UpdateRecord(OpportunityRecord record, Opportunity opportunity)
+    {
+        record.Status = opportunity.Status.ToString();
+        record.Skills.Clear();
+
+        foreach (var skill in opportunity.RequiredSkills)
+        {
+            record.Skills.Add(new OpportunitySkillRecord
+            {
+                OpportunityId = record.Id,
+                Skill = skill
+            });
+        }
+    }
 }

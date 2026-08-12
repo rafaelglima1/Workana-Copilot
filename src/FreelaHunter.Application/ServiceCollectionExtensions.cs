@@ -16,6 +16,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<GetFreelancerProfileHandler>();
         services.AddScoped<ScoreOpportunityWithProfileHandler>();
         services.AddScoped<EvaluateOpportunityHandler>();
+        services.AddScoped<ListOpportunitiesHandler>();
+        services.AddScoped<ShortlistOpportunityHandler>();
+        services.AddScoped<IgnoreOpportunityHandler>();
+        services.AddScoped<ArchiveOpportunityHandler>();
         return services;
     }
 }

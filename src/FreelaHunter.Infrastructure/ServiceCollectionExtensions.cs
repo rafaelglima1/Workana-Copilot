@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
             options.UseSqlite(connectionString));
 
         services.AddScoped<IOpportunityRepository, EfOpportunityRepository>();
+        services.AddScoped<IOpportunityQueryRepository, EfOpportunityQueryRepository>();
         services.AddScoped<IFreelancerProfileRepository, EfFreelancerProfileRepository>();
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 

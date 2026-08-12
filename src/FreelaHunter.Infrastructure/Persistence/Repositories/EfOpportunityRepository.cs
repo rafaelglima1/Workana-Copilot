@@ -34,4 +34,17 @@ public sealed class EfOpportunityRepository : IOpportunityRepository
 
         return OpportunityPersistenceMapper.ToDomain(record);
     }
+
+    public async Task UpdateAsync(Opportunity opportunity, CancellationToken cancellationToken)
+    {
+        var record = await _context.Opportunities
+            .Include(o => o.Skills)
+            .FirstOrDefaultAsync(o => o.Id == opportunity.Id.Value, cancellationToken);
+
+        if (record is null)
+            return;
+
+        OpportunityPersistenceMapper.UpdateRecord(record, opportunity);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

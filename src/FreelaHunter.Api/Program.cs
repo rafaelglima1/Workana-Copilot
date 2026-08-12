@@ -20,6 +20,7 @@ app.MapGet("/health", () => Results.Ok("Healthy"))
    .WithName("HealthCheck");
 
 app.MapOpportunityEndpoints();
+app.MapOpportunityInboxEndpoints();
 app.MapFreelancerProfileEndpoints();
 
 app.Run();

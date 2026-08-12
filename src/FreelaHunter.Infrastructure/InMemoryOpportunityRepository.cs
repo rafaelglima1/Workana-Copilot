@@ -20,4 +20,10 @@ public sealed class InMemoryOpportunityRepository : IOpportunityRepository
         _store.TryGetValue(id.Value, out var opportunity);
         return Task.FromResult(opportunity);
     }
+
+    public Task UpdateAsync(Opportunity opportunity, CancellationToken cancellationToken)
+    {
+        _store[opportunity.Id.Value] = opportunity;
+        return Task.CompletedTask;
+    }
 }
