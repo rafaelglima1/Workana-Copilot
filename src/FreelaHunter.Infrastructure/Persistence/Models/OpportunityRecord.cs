@@ -24,8 +24,10 @@ public sealed class OpportunityRecord
     public int? CompetitionProposalCount { get; set; }
     public int? CompetitionInterestedFreelancerCount { get; set; }
     public DateTimeOffset? PublishedAt { get; set; }
+    public DateTime? PublishedAtUtc { get; set; }
     public DateOnly? ClientDeadline { get; set; }
     public DateTimeOffset CapturedAt { get; set; }
+    public DateTime CapturedAtUtc { get; set; }
     public string Status { get; set; } = string.Empty;
     public ICollection<OpportunitySkillRecord> Skills { get; set; } = new List<OpportunitySkillRecord>();
 }

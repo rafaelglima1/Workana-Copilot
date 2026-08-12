@@ -28,6 +28,10 @@ public sealed class FreelaHunterDbContext : DbContext
             e.Property(x => x.BudgetBasis).HasMaxLength(50);
             e.Property(x => x.BudgetCurrency).HasMaxLength(10);
             e.Property(x => x.Status).HasMaxLength(50);
+            e.HasIndex(x => x.CapturedAtUtc);
+            e.HasIndex(x => x.PublishedAtUtc);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.Marketplace);
         });
 
         modelBuilder.Entity<OpportunitySkillRecord>(e =>

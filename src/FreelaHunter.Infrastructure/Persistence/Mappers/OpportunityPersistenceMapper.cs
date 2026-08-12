@@ -33,8 +33,10 @@ public static class OpportunityPersistenceMapper
             CompetitionProposalCount = opportunity.Competition.ProposalCount,
             CompetitionInterestedFreelancerCount = opportunity.Competition.InterestedFreelancerCount,
             PublishedAt = opportunity.PublishedAt,
+            PublishedAtUtc = opportunity.PublishedAt?.UtcDateTime,
             ClientDeadline = opportunity.ClientDeadline,
             CapturedAt = opportunity.CapturedAt,
+            CapturedAtUtc = opportunity.CapturedAt.UtcDateTime,
             Status = opportunity.Status.ToString(),
             Skills = opportunity.RequiredSkills.Select(s => new OpportunitySkillRecord
             {
@@ -83,6 +85,12 @@ public static class OpportunityPersistenceMapper
 
         var skills = record.Skills.Select(s => s.Skill).ToList().AsReadOnly();
 
+        var publishedAt = record.PublishedAtUtc.HasValue
+            ? new DateTimeOffset(record.PublishedAtUtc.Value, TimeSpan.Zero)
+            : (DateTimeOffset?)null;
+
+        var capturedAt = new DateTimeOffset(record.CapturedAtUtc, TimeSpan.Zero);
+
         return Opportunity.Rehydrate(
             id,
             marketplace,
@@ -96,9 +104,9 @@ public static class OpportunityPersistenceMapper
             client,
             competition,
             skills,
-            record.PublishedAt,
+            publishedAt,
             record.ClientDeadline,
-            record.CapturedAt,
+            capturedAt,
             status);
     }
 

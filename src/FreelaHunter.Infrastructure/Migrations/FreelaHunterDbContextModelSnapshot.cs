@@ -101,6 +101,9 @@ namespace FreelaHunter.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CapturedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("CapturedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Category")
                         .HasColumnType("TEXT");
 
@@ -148,6 +151,9 @@ namespace FreelaHunter.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -162,6 +168,14 @@ namespace FreelaHunter.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CapturedAtUtc");
+
+                    b.HasIndex("Marketplace");
+
+                    b.HasIndex("PublishedAtUtc");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Opportunities");
                 });
