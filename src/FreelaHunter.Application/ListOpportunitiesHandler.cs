@@ -40,7 +40,11 @@ public class ListOpportunitiesHandler
             Status = criteria.Status,
             CapturedFrom = criteria.CapturedFrom,
             CapturedTo = criteria.CapturedTo,
-            Sort = criteria.Sort
+            Sort = criteria.Sort,
+            Evaluated = criteria.Evaluated,
+            Recommendation = criteria.Recommendation,
+            MinScore = criteria.MinScore,
+            MaxScore = criteria.MaxScore
         };
 
         return await _queryRepository.SearchAsync(normalized, cancellationToken);
