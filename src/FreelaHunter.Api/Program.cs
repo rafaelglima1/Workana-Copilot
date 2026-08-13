@@ -22,6 +22,7 @@ app.MapGet("/health", () => Results.Ok("Healthy"))
 app.MapOpportunityEndpoints();
 app.MapOpportunityInboxEndpoints();
 app.MapFreelancerProfileEndpoints();
+app.MapProposalStrategyEndpoints();
 
 app.Run();
 

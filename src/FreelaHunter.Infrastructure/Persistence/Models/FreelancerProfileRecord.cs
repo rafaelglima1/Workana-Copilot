@@ -4,6 +4,7 @@ public sealed class FreelancerProfileRecord
 {
     public Guid Id { get; set; }
     public string DefaultRateCurrency { get; set; } = string.Empty;
+    public decimal? WeeklyCapacityHours { get; set; }
     public ICollection<FreelancerProfileSkillRecord> Skills { get; set; } = new List<FreelancerProfileSkillRecord>();
     public ICollection<FreelancerHourlyRateRecord> HourlyRates { get; set; } = new List<FreelancerHourlyRateRecord>();
 }

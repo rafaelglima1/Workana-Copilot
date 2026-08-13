@@ -13,6 +13,7 @@ public static class FreelancerProfilePersistenceMapper
         {
             Id = profile.Id.Value,
             DefaultRateCurrency = profile.DefaultRateCurrency.Value,
+            WeeklyCapacityHours = profile.WeeklyCapacityHours,
             Skills = profile.Skills.Select(s => new FreelancerProfileSkillRecord
             {
                 FreelancerProfileId = profile.Id.Value,
@@ -37,6 +38,6 @@ public static class FreelancerProfilePersistenceMapper
             HourlyRateTarget.Create(r.Amount, CurrencyCode.From(r.Currency))).ToList();
         var defaultCurrency = CurrencyCode.From(record.DefaultRateCurrency);
 
-        return FreelancerProfile.Rehydrate(id, skills, rates, defaultCurrency);
+        return FreelancerProfile.Rehydrate(id, skills, rates, defaultCurrency, record.WeeklyCapacityHours);
     }
 }

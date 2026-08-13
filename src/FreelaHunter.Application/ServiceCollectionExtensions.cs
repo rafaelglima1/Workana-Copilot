@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ShortlistOpportunityHandler>();
         services.AddScoped<IgnoreOpportunityHandler>();
         services.AddScoped<ArchiveOpportunityHandler>();
+        services.AddScoped<GenerateProposalStrategyHandler>();
         return services;
     }
 }

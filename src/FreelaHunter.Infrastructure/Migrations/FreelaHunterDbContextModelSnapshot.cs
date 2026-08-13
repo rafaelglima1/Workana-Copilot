@@ -45,6 +45,9 @@ namespace FreelaHunter.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("WeeklyCapacityHours")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("FreelancerProfiles");
