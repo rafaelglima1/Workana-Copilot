@@ -7,6 +7,7 @@ public sealed class SaveFreelancerProfileRequest
     public List<ProfileSkillInput> Skills { get; set; } = [];
     public List<ProfileRateInput> HourlyRateTargets { get; set; } = [];
     public required string DefaultRateCurrency { get; set; }
+    public decimal? WeeklyCapacityHours { get; set; }
 }
 
 public sealed class ProfileSkillInput
@@ -27,6 +28,7 @@ public sealed class FreelancerProfileResponse
     public List<ProfileSkillResponse> Skills { get; set; } = [];
     public List<ProfileRateResponse> HourlyRateTargets { get; set; } = [];
     public string DefaultRateCurrency { get; set; } = string.Empty;
+    public decimal? WeeklyCapacityHours { get; set; }
 }
 
 public sealed class ProfileSkillResponse

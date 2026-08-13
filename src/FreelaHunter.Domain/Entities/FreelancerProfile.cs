@@ -12,43 +12,51 @@ public sealed class FreelancerProfile
     public IReadOnlyCollection<SkillCapability> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<HourlyRateTarget> HourlyRateTargets => _hourlyRateTargets.AsReadOnly();
     public CurrencyCode DefaultRateCurrency { get; private set; }
+    public decimal? WeeklyCapacityHours { get; private set; }
 
     private FreelancerProfile(
         FreelancerProfileId id,
         IReadOnlyCollection<SkillCapability> skills,
         IReadOnlyCollection<HourlyRateTarget> hourlyRateTargets,
-        CurrencyCode defaultRateCurrency)
+        CurrencyCode defaultRateCurrency,
+        decimal? weeklyCapacityHours)
     {
         Id = id;
         _skills.AddRange(skills);
         _hourlyRateTargets.AddRange(hourlyRateTargets);
         DefaultRateCurrency = defaultRateCurrency;
+        WeeklyCapacityHours = weeklyCapacityHours;
     }
 
     public static FreelancerProfile Create(
         IEnumerable<SkillCapability> skills,
         IEnumerable<HourlyRateTarget> hourlyRateTargets,
-        CurrencyCode defaultRateCurrency)
+        CurrencyCode defaultRateCurrency,
+        decimal? weeklyCapacityHours = null)
     {
         var distinctSkills = ValidateSkills(skills);
         var distinctRates = ValidateRates(hourlyRateTargets);
         ValidateDefaultCurrency(defaultRateCurrency, distinctRates);
+        ValidateWeeklyCapacity(weeklyCapacityHours);
 
         return new FreelancerProfile(
             FreelancerProfileId.New(),
             distinctSkills,
             distinctRates,
-            defaultRateCurrency);
+            defaultRateCurrency,
+            weeklyCapacityHours);
     }
 
     public void Update(
         IEnumerable<SkillCapability> skills,
         IEnumerable<HourlyRateTarget> hourlyRateTargets,
-        CurrencyCode defaultRateCurrency)
+        CurrencyCode defaultRateCurrency,
+        decimal? weeklyCapacityHours = null)
     {
         var distinctSkills = ValidateSkills(skills);
         var distinctRates = ValidateRates(hourlyRateTargets);
         ValidateDefaultCurrency(defaultRateCurrency, distinctRates);
+        ValidateWeeklyCapacity(weeklyCapacityHours);
 
         _skills.Clear();
         _skills.AddRange(distinctSkills);
@@ -57,6 +65,7 @@ public sealed class FreelancerProfile
         _hourlyRateTargets.AddRange(distinctRates);
 
         DefaultRateCurrency = defaultRateCurrency;
+        WeeklyCapacityHours = weeklyCapacityHours;
     }
 
     public HourlyRateTarget ResolveHourlyRate(CurrencyCode? preferredCurrency)
@@ -137,11 +146,18 @@ public sealed class FreelancerProfile
             throw new DomainException($"DefaultRateCurrency '{defaultCurrency.Value}' must exist in HourlyRateTargets.");
     }
 
+    private static void ValidateWeeklyCapacity(decimal? weeklyCapacityHours)
+    {
+        if (weeklyCapacityHours.HasValue && (weeklyCapacityHours.Value <= 0 || weeklyCapacityHours.Value > 168))
+            throw new DomainException("WeeklyCapacityHours must be between 0 (exclusive) and 168 (inclusive).");
+    }
+
     public static FreelancerProfile Rehydrate(
         FreelancerProfileId id,
         IEnumerable<SkillCapability> skills,
         IEnumerable<HourlyRateTarget> hourlyRateTargets,
-        CurrencyCode defaultRateCurrency)
+        CurrencyCode defaultRateCurrency,
+        decimal? weeklyCapacityHours = null)
     {
         var distinctSkills = ValidateSkills(skills);
         var distinctRates = ValidateRates(hourlyRateTargets);
@@ -151,6 +167,7 @@ public sealed class FreelancerProfile
             id,
             distinctSkills,
             distinctRates,
-            defaultRateCurrency);
+            defaultRateCurrency,
+            weeklyCapacityHours);
     }
 }
