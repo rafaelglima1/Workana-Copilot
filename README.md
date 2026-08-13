@@ -29,22 +29,27 @@ dotnet test --no-build
 - MiMo structured opportunity analysis (FHL-005) — análise semântica via LLM, sem score via LLM
 - Freelancer profile (FHL-006) — perfil com skills e metas de hourly rate
 - Assisted opportunity evaluation (FHL-007) — pipeline completo: Opportunity → MiMo analysis → Profile → deterministic scoring
-- Deterministic skill intelligence (FHL-008) — SkillNameNormalizer (trim + whitespace collapse), SkillAliasCatalog (13 canonical skills), SkillMatcher (exact + alias matching), profile alias-duplicate rejection
-- SQLite + EF Core local persistence (FHL-009) — Opportunity and FreelancerProfile persisted via EF Core to SQLite, domain entities exposed via `Rehydrate()` methods, automatic migration on startup
-- Opportunity Inbox workflow (FHL-010) — paginated listing, search, filters, sorting, status transitions (Shortlist/Ignore/Archive)
+- Deterministic skill intelligence (FHL-008) — SkillNameNormalizer, SkillAliasCatalog, SkillMatcher
+- SQLite + EF Core local persistence (FHL-009) — Opportunity e FreelancerProfile via EF Core, auto-migration
+- Opportunity Inbox workflow (FHL-010) — paginação, busca, filtros, ordenação, transições de status
+- Evaluation snapshot persistence (FHL-011) — snapshots de avaliação persistidos, exibidos na Inbox com score/recommendation
+- Deterministic proposal strategy (FHL-012) — estratégia de proposta determinística baseada em score e perfil
+- Blazor Web UI (FHL-013) — Inbox, Detalhe, Criar, Perfil — via HTTP client contra a API
+- Automated background processing (FHL-014) — Worker evalua oportunidades automaticamente, gera propostas para Go/Apply
 
 API endpoints:
 
-- `GET /api/opportunities` — inbox listing with pagination, search, filters, sorting
-- `POST /api/opportunities/{id}/shortlist` — transition to Shortlisted
-- `POST /api/opportunities/{id}/ignore` — transition to Ignored
-- `POST /api/opportunities/{id}/archive` — transition to Archived (terminal)
+- `GET /api/opportunities` — inbox com paginação, busca, filtros, ordenação
+- `POST /api/opportunities/manual` — criar oportunidade manual
+- `GET /api/opportunities/{id}` — detalhe da oportunidade
+- `POST /api/opportunities/{id}/shortlist` → Shortlisted
+- `POST /api/opportunities/{id}/ignore` → Ignored
+- `POST /api/opportunities/{id}/archive` → Archived (terminal)
+- `POST /api/opportunities/{id}/evaluate` — avaliar (determinístico + LLM opcional)
+- `GET /api/opportunities/{id}/evaluation` — snapshot de avaliação
+- `POST /api/opportunities/{id}/proposal-strategy` — gerar estratégia de proposta
+- `GET/PUT /api/freelancer-profile` — perfil do freelancer
 
-Score e evaluation ainda são on-demand e não aparecem na Inbox persistida.
-
-Para utilizar análise real, configurar `MiMo__ApiKey` via environment variable ou mecanismo seguro de secrets.
-Provider default: MiMo. Model default: mimo-v2.5. Nenhum LLM é necessário para testes automatizados.
-
-O pipeline de avaliação assistida não calcula score ou recommendation via LLM. O MiMo interpreta; o Domain Scorer decide.
+Para utilizar LLM, configurar `MiMo__ApiKey` via env var. Provider: MiMo. Model: mimo-v2.5. Testes automatizados não necessitam de LLM.
 
 Integrações externas (Workana, Gmail, scraping) ainda **não foram implementadas**.
