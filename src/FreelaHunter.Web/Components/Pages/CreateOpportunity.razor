@@ -1,0 +1,220 @@
+@page "/opportunities/create"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>Nova Oportunidade - FreelaHunter</PageTitle>
+
+<h1 class="page-title">➕ Nova Oportunidade Manual</h1>
+
+@if (_created)
+{
+    <div class="alert alert-success">
+        Oportunidade criada com sucesso! <a href="/opportunities/@(_createdId)">Ver detalhes</a>
+    </div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <EditForm Model="_request" OnValidSubmit="SubmitOpportunity">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Título *</label>
+                    <InputText class="form-control" @bind-Value="_request.Title" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Marketplace *</label>
+                    <InputSelect TValue="ContractMarketplace" class="form-select" @bind-Value="_request.Marketplace">
+                        <option value="Workana">Workana</option>
+                        <option value="Upwork">Upwork</option>
+                        <option value="Freelancer">Freelancer</option>
+                        <option value="Other">Outro</option>
+                    </InputSelect>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descrição *</label>
+                    <InputTextArea class="form-control" @bind-Value="_request.Description" rows="4" required />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Categoria</label>
+                    <InputText class="form-control" @bind-Value="_request.Category" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Subcategoria</label>
+                    <InputText class="form-control" @bind-Value="_request.Subcategory" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Referência Externa</label>
+                    <InputText class="form-control" @bind-Value="_request.ExternalReference" />
+                </div>
+
+                <hr />
+
+                <h5>Budget</h5>
+                <div class="col-md-3">
+                    <label class="form-label">Tipo *</label>
+                    <InputSelect TValue="ContractBudgetKind" class="form-select" @bind-Value="_request.Budget!.Kind">
+                        <option value="Unknown">Desconhecido</option>
+                        <option value="Negotiable">Negociável</option>
+                        <option value="Exact">Fixo</option>
+                        <option value="Range">Range</option>
+                        <option value="UpTo">Até</option>
+                        <option value="From">A partir de</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Base *</label>
+                    <InputSelect TValue="ContractBudgetBasis" class="form-select" @bind-Value="_request.Budget!.Basis">
+                        <option value="FixedProject">Projeto Fixo</option>
+                        <option value="Hourly">Por Hora</option>
+                        <option value="Monthly">Mensal</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Moeda</label>
+                    <InputText class="form-control" @bind-Value="_request.Budget!.Currency" placeholder="BRL" />
+                </div>
+                @if (_request.Budget!.Kind is ContractBudgetKind.Exact or ContractBudgetKind.UpTo or ContractBudgetKind.From)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label">Valor</label>
+                        <InputNumber class="form-control" @bind-Value="_request.Budget!.Amount" />
+                    </div>
+                }
+                @if (_request.Budget!.Kind == ContractBudgetKind.Range)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label">Mínimo</label>
+                        <InputNumber class="form-control" @bind-Value="_request.Budget!.Minimum" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Máximo</label>
+                        <InputNumber class="form-control" @bind-Value="_request.Budget!.Maximum" />
+                    </div>
+                }
+
+                <hr />
+
+                <h5>Cliente</h5>
+                <div class="col-md-4">
+                    <label class="form-label">Nome</label>
+                    <InputText class="form-control" @bind-Value="_request.Client!.DisplayName" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">País</label>
+                    <InputText class="form-control" @bind-Value="_request.Client!.Country" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Projetos</label>
+                    <InputNumber class="form-control" @bind-Value="_request.Client!.PublishedProjects" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Pagos</label>
+                    <InputNumber class="form-control" @bind-Value="_request.Client!.PaidProjects" />
+                </div>
+
+                <hr />
+
+                <h5>Skills Requeridas</h5>
+                <div class="col-12">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="_newSkill" @onkeyup="OnSkillKeyUp" placeholder="Adicionar skill..." />
+                        <button class="btn btn-outline-secondary" type="button" @onclick="AddSkill">+ Adicionar</button>
+                    </div>
+                    <div class="mt-2">
+                        @foreach (var skill in _request.RequiredSkills ?? [])
+                        {
+                            <span class="skill-tag">
+                                @skill
+                                <button type="button" class="btn-close btn-close-sm ms-1" @onclick="() => RemoveSkill(skill)"></button>
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary" disabled="@(_saving || string.IsNullOrWhiteSpace(_request.Title) || string.IsNullOrWhiteSpace(_request.Description))">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Criar Oportunidade
+                    </button>
+                    <a href="/inbox" class="btn btn-outline-secondary ms-2">Cancelar</a>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private CreateManualOpportunityRequest _request = new()
+    {
+        Title = "",
+        Description = "",
+        Marketplace = ContractMarketplace.Workana,
+        Budget = new BudgetInput { Kind = ContractBudgetKind.Unknown, Basis = ContractBudgetBasis.FixedProject },
+        Client = new ClientInput(),
+        RequiredSkills = []
+    };
+
+    private string _newSkill = "";
+    private bool _saving;
+    private bool _created;
+    private Guid _createdId;
+    private string? _error;
+
+    private void AddSkill()
+    {
+        var skill = _newSkill?.Trim();
+        if (!string.IsNullOrEmpty(skill) && (_request.RequiredSkills is null || !_request.RequiredSkills.Contains(skill)))
+        {
+            _request.RequiredSkills ??= [];
+            _request.RequiredSkills.Add(skill);
+        }
+        _newSkill = "";
+    }
+
+    private void RemoveSkill(string skill)
+    {
+        _request.RequiredSkills?.Remove(skill);
+    }
+
+    private void OnSkillKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddSkill();
+        }
+    }
+
+    private async Task SubmitOpportunity()
+    {
+        _saving = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Api.CreateManualOpportunityAsync(_request);
+            if (result is not null)
+            {
+                _created = true;
+                _createdId = result.Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Erro ao criar oportunidade: {ex.Message}";
+        }
+
+        _saving = false;
+        StateHasChanged();
+    }
+}

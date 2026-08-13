@@ -1,0 +1,387 @@
+@page "/opportunities/{Id:guid}"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>@(_opportunity?.Title ?? "Oportunidade") - FreelaHunter</PageTitle>
+
+@if (_loading)
+{
+    <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+}
+else if (_opportunity is null)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">❌</div>
+        <p>Oportunidade não encontrada.</p>
+        <a href="/inbox" class="btn btn-primary">Voltar ao Inbox</a>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <a href="/inbox" class="text-muted text-decoration-none mb-2 d-inline-block">← Voltar ao Inbox</a>
+            <h1 class="page-title mb-0">@_opportunity.Title</h1>
+        </div>
+        <div class="d-flex gap-2">
+            @if (_opportunity.Status != ContractOpportunityStatus.Shortlisted)
+            {
+                <button class="btn btn-success btn-sm" @onclick="Shortlist">✓ Shortlist</button>
+            }
+            @if (_opportunity.Status != ContractOpportunityStatus.Ignored)
+            {
+                <button class="btn btn-secondary btn-sm" @onclick="Ignore">✗ Ignorar</button>
+            }
+            @if (_opportunity.Status != ContractOpportunityStatus.Archived)
+            {
+                <button class="btn btn-danger btn-sm" @onclick="Archive">🗄 Arquivar</button>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">Detalhes</div>
+                <div class="card-body">
+                    <p>@_opportunity.Description</p>
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <strong>Marketplace:</strong> @_opportunity.Marketplace<br />
+                            <strong>Categoria:</strong> @(_opportunity.Category ?? "—")<br />
+                            <strong>Subcategoria:</strong> @(_opportunity.Subcategory ?? "—")
+                        </div>
+                        <div class="col-6">
+                            <strong>Budget:</strong> @FormatBudget(_opportunity.Budget)<br />
+                            <strong>Publicado:</strong> @(_opportunity.PublishedAt?.ToString("dd/MM/yyyy") ?? "—")<br />
+                            <strong>Prazo:</strong> @(_opportunity.ClientDeadline?.ToString("dd/MM/yyyy") ?? "—")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Skills Requeridas</div>
+                <div class="card-body">
+                    @if (_opportunity.RequiredSkills.Count == 0)
+                    {
+                        <span class="text-muted">Nenhuma skill requerida</span>
+                    }
+                    else
+                    {
+                        @foreach (var skill in _opportunity.RequiredSkills)
+                        {
+                            <span class="skill-tag">@skill</span>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Cliente</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Nome:</strong> @(_opportunity.Client.DisplayName ?? "Anônimo")<br />
+                            <strong>País:</strong> @(_opportunity.Client.Country ?? "—")
+                        </div>
+                        <div class="col-6">
+                            <strong>Projetos publicados:</strong> @(_opportunity.Client.PublishedProjects?.ToString() ?? "—")<br />
+                            <strong>Projetos pagos:</strong> @(_opportunity.Client.PaidProjects?.ToString() ?? "—")<br />
+                            <strong>Avaliação:</strong> @(_opportunity.Client.Rating?.ToString("F1") ?? "—")/5
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">Status</div>
+                <div class="card-body text-center">
+                    <span class="badge @GetStatusBadgeClass(_opportunity.Status) fs-6">@_opportunity.Status</span>
+                    <div class="mt-2 text-muted small">
+                        Capturado em @_opportunity.CapturedAt.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Avaliação</div>
+                <div class="card-body">
+                    @if (_evaluationLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        </div>
+                    }
+                    else if (_evaluation is not null)
+                    {
+                        <div class="text-center mb-3">
+                            <div class="stat-value">@_evaluation.Score.Overall.ToString("F1")</div>
+                            <div class="stat-label">Score</div>
+                            <span class="badge @GetRecommendationBadgeClass(_evaluation.Score.Recommendation) mt-2">
+                                @_evaluation.Score.Recommendation
+                            </span>
+                        </div>
+                        <hr />
+                        <div class="small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Technical Fit</span>
+                                <span>@_evaluation.Score.TechnicalFit.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar mb-2">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.TechnicalFit.Score)" style="width: @_evaluation.Score.TechnicalFit.Score%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Economic</span>
+                                <span>@_evaluation.Score.EconomicPotential.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar mb-2">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.EconomicPotential.Score)" style="width: @_evaluation.Score.EconomicPotential.Score%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Client</span>
+                                <span>@_evaluation.Score.ClientQuality.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar mb-2">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.ClientQuality.Score)" style="width: @_evaluation.Score.ClientQuality.Score%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Competition</span>
+                                <span>@_evaluation.Score.Competition.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar mb-2">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.Competition.Score)" style="width: @_evaluation.Score.Competition.Score%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Delivery</span>
+                                <span>@_evaluation.Score.DeliveryConfidence.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar mb-2">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.DeliveryConfidence.Score)" style="width: @_evaluation.Score.DeliveryConfidence.Score%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>AI Leverage</span>
+                                <span>@_evaluation.Score.AiLeverage.Score.ToString("F0")</span>
+                            </div>
+                            <div class="score-bar">
+                                <div class="score-fill @GetScoreClass(_evaluation.Score.AiLeverage.Score)" style="width: @_evaluation.Score.AiLeverage.Score%"></div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center">
+                            <p class="text-muted mb-2">Sem avaliação ainda</p>
+                            <button class="btn btn-primary btn-sm" @onclick="Evaluate" disabled="@(_evaluating)">
+                                @if (_evaluating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                Avaliar
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (_evaluation is not null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">Proposta</div>
+                    <div class="card-body">
+                        @if (_proposalLoading)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            </div>
+                        }
+                        else if (_proposal is not null)
+                        {
+                            <div class="text-center mb-3">
+                                <span class="badge @GetDecisionBadgeClass(_proposal.Decision) fs-6">@_proposal.Decision</span>
+                            </div>
+                            <div class="stat-grid mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-value" style="font-size:1.2rem">@_proposal.RecommendedCurrency @_proposal.RecommendedHourlyRate.ToString("N0")/h</div>
+                                    <div class="stat-label">Rate</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" style="font-size:1.2rem">@_proposal.EstimatedDeliveryDays dias</div>
+                                    <div class="stat-label">Prazo</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" style="font-size:1.2rem">@_proposal.RecommendedCurrency @_proposal.EstimatedRevenue.ToString("N0")</div>
+                                    <div class="stat-label">Receita</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted">
+                                Confiança: @_proposal.Confidence.ToString("F1")%
+                            </div>
+                            <hr />
+                            <ul class="rationale-list">
+                                @foreach (var reason in _proposal.Rationale)
+                                {
+                                    <li>@reason</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <div class="text-center">
+                                <button class="btn btn-primary btn-sm" @onclick="GenerateProposal" disabled="@(_generatingProposal)">
+                                    @if (_generatingProposal)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    Gerar Proposta
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private FreelaHunter.Contracts.Opportunities.OpportunityResponse? _opportunity;
+    private FreelaHunter.Contracts.Opportunities.OpportunityEvaluationResponse? _evaluation;
+    private FreelaHunter.Contracts.Opportunities.ProposalStrategyResponse? _proposal;
+    private bool _loading = true;
+    private bool _evaluationLoading = false;
+    private bool _evaluating;
+    private bool _proposalLoading;
+    private bool _generatingProposal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _opportunity = await Api.GetOpportunityAsync(Id);
+            _evaluation = await Api.GetEvaluationAsync(Id);
+        }
+        catch
+        {
+            _opportunity = null;
+        }
+
+        _loading = false;
+    }
+
+    private async Task Evaluate()
+    {
+        _evaluating = true;
+        StateHasChanged();
+
+        try
+        {
+            _evaluation = await Api.EvaluateOpportunityAsync(Id);
+        }
+        catch
+        {
+            // keep previous state
+        }
+
+        _evaluating = false;
+        StateHasChanged();
+    }
+
+    private async Task GenerateProposal()
+    {
+        _generatingProposal = true;
+        _proposalLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _proposal = await Api.GenerateProposalStrategyAsync(Id);
+        }
+        catch
+        {
+            // keep previous state
+        }
+
+        _proposalLoading = false;
+        _generatingProposal = false;
+        StateHasChanged();
+    }
+
+    private async Task Shortlist()
+    {
+        await Api.ShortlistOpportunityAsync(Id);
+        _opportunity = await Api.GetOpportunityAsync(Id);
+        StateHasChanged();
+    }
+
+    private async Task Ignore()
+    {
+        await Api.IgnoreOpportunityAsync(Id);
+        _opportunity = await Api.GetOpportunityAsync(Id);
+        StateHasChanged();
+    }
+
+    private async Task Archive()
+    {
+        await Api.ArchiveOpportunityAsync(Id);
+        _opportunity = await Api.GetOpportunityAsync(Id);
+        StateHasChanged();
+    }
+
+    private static string FormatBudget(FreelaHunter.Contracts.Opportunities.BudgetResponse budget)
+    {
+        if (budget.Kind == ContractBudgetKind.Unknown || budget.Kind == ContractBudgetKind.Negotiable)
+            return budget.Kind.ToString();
+
+        var currency = budget.Currency ?? "";
+        return budget.Kind switch
+        {
+            ContractBudgetKind.Exact => $"{currency} {budget.Amount:N0}",
+            ContractBudgetKind.Range => $"{currency} {budget.Minimum:N0} - {budget.Maximum:N0}",
+            ContractBudgetKind.UpTo => $"{currency} até {budget.Maximum:N0}",
+            ContractBudgetKind.From => $"{currency} de {budget.Minimum:N0}",
+            _ => budget.Kind.ToString()
+        };
+    }
+
+    private static string GetStatusBadgeClass(ContractOpportunityStatus status) => status switch
+    {
+        ContractOpportunityStatus.New => "badge-new",
+        ContractOpportunityStatus.Shortlisted => "badge-shortlisted",
+        ContractOpportunityStatus.Ignored => "badge-ignored",
+        ContractOpportunityStatus.Archived => "badge-archived",
+        _ => ""
+    };
+
+    private static string GetRecommendationBadgeClass(string recommendation) => recommendation switch
+    {
+        "Prioritize" => "badge-go",
+        "Apply" => "badge-go",
+        "ConsiderWithCaution" => "badge-maybe",
+        "Skip" => "badge-nogo",
+        _ => ""
+    };
+
+    private static string GetDecisionBadgeClass(string decision) => decision switch
+    {
+        "Go" => "badge-go",
+        "Maybe" => "badge-maybe",
+        "NoGo" => "badge-nogo",
+        _ => ""
+    };
+
+    private static string GetScoreClass(decimal score) => score switch
+    {
+        >= 70 => "score-high",
+        >= 50 => "score-medium",
+        _ => "score-low"
+    };
+}

@@ -1,3 +1,84 @@
 ﻿@page "/"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
 
-<h1>FreelaHunter</h1>
+<PageTitle>FreelaHunter</PageTitle>
+
+<h1 class="page-title">FreelaHunter</h1>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">@(_stats?.TotalOpportunities ?? 0)</div>
+            <div class="stat-label">Total Oportunidades</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">@(_stats?.NewOpportunities ?? 0)</div>
+            <div class="stat-label">Novas</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">@(_stats?.ShortlistedOpportunities ?? 0)</div>
+            <div class="stat-label">Shortlisted</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">@(_stats?.EvaluatedOpportunities ?? 0)</div>
+            <div class="stat-label">Avaliadas</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Ações Rápidas
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-3">
+            <a href="/opportunities/create" class="btn btn-primary">
+                ➕ Nova Oportunidade
+            </a>
+            <a href="/inbox" class="btn btn-outline-secondary">
+                📥 Ver Inbox
+            </a>
+            <a href="/profile" class="btn btn-outline-secondary">
+                👤 Editar Perfil
+            </a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private StatsDto? _stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var inbox = await Api.GetInboxAsync(pageSize: 1);
+            if (inbox is not null)
+            {
+                _stats = new StatsDto
+                {
+                    TotalOpportunities = inbox.TotalCount
+                };
+            }
+        }
+        catch
+        {
+            _stats = new StatsDto();
+        }
+    }
+
+    private class StatsDto
+    {
+        public int TotalOpportunities { get; set; }
+        public int NewOpportunities { get; set; }
+        public int ShortlistedOpportunities { get; set; }
+        public int EvaluatedOpportunities { get; set; }
+    }
+}
