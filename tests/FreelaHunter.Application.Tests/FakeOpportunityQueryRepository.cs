@@ -5,7 +5,8 @@ namespace FreelaHunter.Application.Tests;
 internal sealed class FakeOpportunityQueryRepository : IOpportunityQueryRepository
 {
     public List<OpportunityQueryCriteria> ReceivedCriteria { get; } = [];
-    private readonly Func<OpportunityQueryCriteria, CancellationToken, Task<PagedResult<OpportunityInboxItem>>> _handler;
+    private Func<OpportunityQueryCriteria, CancellationToken, Task<PagedResult<OpportunityInboxItem>>> _handler;
+    private IReadOnlyCollection<OpportunityInboxItem>? _items;
 
     public FakeOpportunityQueryRepository()
     {
@@ -14,11 +15,11 @@ internal sealed class FakeOpportunityQueryRepository : IOpportunityQueryReposito
             ReceivedCriteria.Add(criteria);
             return Task.FromResult(new PagedResult<OpportunityInboxItem>
             {
-                Items = [],
+                Items = _items?.ToList() ?? [],
                 Page = criteria.Page,
                 PageSize = criteria.PageSize,
-                TotalCount = 0,
-                TotalPages = 0
+                TotalCount = _items?.Count ?? 0,
+                TotalPages = _items?.Count > 0 ? 1 : 0
             });
         };
     }
@@ -27,6 +28,11 @@ internal sealed class FakeOpportunityQueryRepository : IOpportunityQueryReposito
         Func<OpportunityQueryCriteria, CancellationToken, Task<PagedResult<OpportunityInboxItem>>> handler)
     {
         _handler = handler;
+    }
+
+    public void SetResult(IReadOnlyCollection<OpportunityInboxItem> items)
+    {
+        _items = items;
     }
 
     public Task<PagedResult<OpportunityInboxItem>> SearchAsync(
