@@ -1,0 +1,272 @@
+@page "/profile"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>Meu Perfil - FreelaHunter</PageTitle>
+
+<h1 class="page-title">👤 Meu Perfil</h1>
+
+@if (_loading)
+{
+    <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+}
+else
+{
+    @if (_saved)
+    {
+        <div class="alert alert-success">Perfil salvo com sucesso!</div>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">Skills</div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" @bind="_newSkillName" @onkeyup="OnSkillKeyUp" placeholder="Nome da skill" />
+                        <select class="form-select" style="max-width: 150px" @bind="_newSkillLevel">
+                            <option value="None">Nenhum</option>
+                            <option value="Basic">Básico</option>
+                            <option value="Working">Intermediário</option>
+                            <option value="Strong">Forte</option>
+                            <option value="Expert">Expert</option>
+                        </select>
+                        <button class="btn btn-outline-secondary" type="button" @onclick="AddSkill">+ Adicionar</button>
+                    </div>
+
+                    @if (_skills.Count == 0)
+                    {
+                        <p class="text-muted">Nenhuma skill adicionada.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Skill</th>
+                                    <th>Nível</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var skill in _skills)
+                                {
+                                    <tr>
+                                        <td>@skill.Name</td>
+                                        <td>@skill.Level</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSkill(skill)">✕</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">Hourly Rates</div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="number" class="form-control" @bind="_newRateAmount" placeholder="Valor" min="0" step="0.01" />
+                        <input type="text" class="form-control" @bind="_newRateCurrency" placeholder="Moeda (BRL)" style="max-width: 100px" />
+                        <button class="btn btn-outline-secondary" type="button" @onclick="AddRate">+ Adicionar</button>
+                    </div>
+
+                    @if (_rates.Count == 0)
+                    {
+                        <p class="text-muted">Nenhum rate adicionado.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Valor</th>
+                                    <th>Moeda</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var rate in _rates)
+                                {
+                                    <tr>
+                                        <td>@rate.Amount.ToString("N2")</td>
+                                        <td>@rate.Currency</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRate(rate)">✕</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">Configurações</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Moeda Padrão *</label>
+                        <input type="text" class="form-control" @bind="_defaultCurrency" placeholder="BRL" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Capacidade Semanal (horas)</label>
+                        <input type="number" class="form-control" @bind="_weeklyCapacityHours" min="0" max="168" step="0.5" />
+                        <small class="form-text text-muted">Ex: 20h/semana. Deixe vazio para usar 8h/dia.</small>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-100" @onclick="SaveProfile" disabled="@_saving">
+                @if (_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                Salvar Perfil
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private bool _saved;
+    private string? _error;
+
+    private List<SkillDto> _skills = [];
+    private List<RateDto> _rates = [];
+    private string _defaultCurrency = "BRL";
+    private decimal? _weeklyCapacityHours;
+
+    private string _newSkillName = "";
+    private string _newSkillLevel = "Working";
+    private decimal _newRateAmount;
+    private string _newRateCurrency = "BRL";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var profile = await Api.GetProfileAsync();
+            if (profile is not null)
+            {
+                _skills = profile.Skills.Select(s => new SkillDto { Name = s.Name, Level = s.Level }).ToList();
+                _rates = profile.HourlyRateTargets.Select(r => new RateDto { Amount = r.Amount, Currency = r.Currency }).ToList();
+                _defaultCurrency = profile.DefaultRateCurrency;
+                _weeklyCapacityHours = profile.WeeklyCapacityHours;
+            }
+        }
+        catch
+        {
+            // new profile
+        }
+
+        _loading = false;
+    }
+
+    private void AddSkill()
+    {
+        var name = _newSkillName?.Trim();
+        if (!string.IsNullOrEmpty(name) && !_skills.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            _skills.Add(new SkillDto { Name = name, Level = _newSkillLevel });
+        }
+        _newSkillName = "";
+    }
+
+    private void RemoveSkill(SkillDto skill)
+    {
+        _skills.Remove(skill);
+    }
+
+    private void OnSkillKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddSkill();
+        }
+    }
+
+    private void AddRate()
+    {
+        if (_newRateAmount > 0 && !string.IsNullOrWhiteSpace(_newRateCurrency))
+        {
+            var currency = _newRateCurrency.Trim().ToUpper();
+            if (!_rates.Any(r => r.Currency.Equals(currency, StringComparison.OrdinalIgnoreCase)))
+            {
+                _rates.Add(new RateDto { Amount = _newRateAmount, Currency = currency });
+            }
+        }
+        _newRateAmount = 0;
+        _newRateCurrency = "BRL";
+    }
+
+    private void RemoveRate(RateDto rate)
+    {
+        _rates.Remove(rate);
+    }
+
+    private async Task SaveProfile()
+    {
+        _saving = true;
+        _saved = false;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = new SaveFreelancerProfileRequest
+            {
+                Skills = _skills.Select(s => new ProfileSkillInput
+                {
+                    Name = s.Name,
+                    Level = Enum.Parse<ContractSkillLevel>(s.Level)
+                }).ToList(),
+                HourlyRateTargets = _rates.Select(r => new ProfileRateInput
+                {
+                    Amount = r.Amount,
+                    Currency = r.Currency
+                }).ToList(),
+                DefaultRateCurrency = _defaultCurrency?.Trim().ToUpper() ?? "BRL",
+                WeeklyCapacityHours = _weeklyCapacityHours
+            };
+
+            await Api.SaveProfileAsync(request);
+            _saved = true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Erro ao salvar perfil: {ex.Message}";
+        }
+
+        _saving = false;
+        StateHasChanged();
+    }
+
+    private class SkillDto
+    {
+        public string Name { get; set; } = "";
+        public string Level { get; set; } = "Working";
+    }
+
+    private class RateDto
+    {
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "BRL";
+    }
+}

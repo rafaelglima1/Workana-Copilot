@@ -1,0 +1,275 @@
+@page "/inbox"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>Inbox - FreelaHunter</PageTitle>
+
+<h1 class="page-title">📥 Opportunity Inbox</h1>
+
+<div class="filter-bar">
+    <input type="text" class="form-control" placeholder="Buscar..." @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+    <select class="form-select" @bind="_statusFilter" @bind:after="OnFilterChanged">
+        <option value="">Todos os status</option>
+        <option value="New">Novo</option>
+        <option value="Shortlisted">Shortlisted</option>
+        <option value="Ignored">Ignorado</option>
+        <option value="Archived">Arquivado</option>
+    </select>
+    <select class="form-select" @bind="_sort" @bind:after="OnFilterChanged">
+        <option value="CapturedAtDesc">Mais recentes</option>
+        <option value="CapturedAtAsc">Mais antigos</option>
+        <option value="PublishedAtDesc">Publicação (recente)</option>
+        <option value="OverallDesc">Maior score</option>
+        <option value="OverallAsc">Menor score</option>
+    </select>
+</div>
+
+@if (_loading)
+{
+    <div class="text-center py-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+}
+else if (_items is null || _items.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <p>Nenhuma oportunidade encontrada.</p>
+        <a href="/opportunities/create" class="btn btn-primary">➕ Criar primeira oportunidade</a>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Marketplace</th>
+                        <th>Budget</th>
+                        <th>Skills</th>
+                        <th>Status</th>
+                        <th>Avaliação</th>
+                        <th>Capturado</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _items)
+                    {
+                        <tr>
+                            <td>
+                                <a href="/opportunities/@item.Id">@item.Title</a>
+                            </td>
+                            <td>@item.Marketplace</td>
+                            <td>@FormatBudget(item.Budget)</td>
+                            <td>
+                                @foreach (var skill in item.RequiredSkills.Take(3))
+                                {
+                                    <span class="skill-tag">@skill</span>
+                                }
+                                @if (item.RequiredSkills.Count > 3)
+                                {
+                                    <span class="skill-tag">+@(item.RequiredSkills.Count - 3)</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(item.Status)">@item.Status</span>
+                            </td>
+                            <td>
+                                @if (item.LatestEvaluation is not null)
+                                {
+                                    <div>
+                                        <span class="badge @GetRecommendationBadgeClass(item.LatestEvaluation.Recommendation)">
+                                            @item.LatestEvaluation.Recommendation
+                                        </span>
+                                        <small class="text-muted ms-1">@item.LatestEvaluation.OverallScore.ToString("F1")</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>@item.CapturedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    @if (item.Status != ContractOpportunityStatus.Shortlisted)
+                                    {
+                                        <button class="btn btn-outline-success" @onclick="() => Shortlist(item.Id)" title="Shortlist">
+                                            ✓
+                                        </button>
+                                    }
+                                    @if (item.Status != ContractOpportunityStatus.Ignored)
+                                    {
+                                        <button class="btn btn-outline-secondary" @onclick="() => Ignore(item.Id)" title="Ignorar">
+                                            ✗
+                                        </button>
+                                    }
+                                    @if (item.Status != ContractOpportunityStatus.Archived)
+                                    {
+                                        <button class="btn btn-outline-danger" @onclick="() => Archive(item.Id)" title="Arquivar">
+                                            🗄
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (_totalPages > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted">
+                Página @_page de @_totalPages (@_totalCount total)
+            </small>
+            <div class="pagination">
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page <= 1)" @onclick="PreviousPage">
+                    ← Anterior
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page >= _totalPages)" @onclick="NextPage">
+                    Próxima →
+                </button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<FreelaHunter.Contracts.Inbox.OpportunityInboxItemResponse>? _items;
+    private bool _loading = true;
+    private string _search = "";
+    private string _statusFilter = "";
+    private string _sort = "CapturedAtDesc";
+    private int _page = 1;
+    private int _pageSize = 25;
+    private int _totalCount;
+    private int _totalPages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInbox();
+    }
+
+    private async Task LoadInbox()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Api.GetInboxAsync(
+                page: _page,
+                pageSize: _pageSize,
+                search: string.IsNullOrEmpty(_search) ? null : _search,
+                status: string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter,
+                sort: _sort);
+
+            if (result is not null)
+            {
+                _items = result.Items;
+                _totalCount = result.TotalCount;
+                _totalPages = result.TotalPages;
+            }
+        }
+        catch
+        {
+            _items = [];
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _page = 1;
+            await LoadInbox();
+        }
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _page = 1;
+        await LoadInbox();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await LoadInbox();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page < _totalPages)
+        {
+            _page++;
+            await LoadInbox();
+        }
+    }
+
+    private async Task Shortlist(Guid id)
+    {
+        await Api.ShortlistOpportunityAsync(id);
+        await LoadInbox();
+    }
+
+    private async Task Ignore(Guid id)
+    {
+        await Api.IgnoreOpportunityAsync(id);
+        await LoadInbox();
+    }
+
+    private async Task Archive(Guid id)
+    {
+        await Api.ArchiveOpportunityAsync(id);
+        await LoadInbox();
+    }
+
+    private static string FormatBudget(FreelaHunter.Contracts.Opportunities.BudgetResponse budget)
+    {
+        if (budget.Kind == ContractBudgetKind.Unknown || budget.Kind == ContractBudgetKind.Negotiable)
+            return budget.Kind.ToString();
+
+        var currency = budget.Currency ?? "";
+        return budget.Kind switch
+        {
+            ContractBudgetKind.Exact => $"{currency} {budget.Amount:N0}",
+            ContractBudgetKind.Range => $"{currency} {budget.Minimum:N0} - {budget.Maximum:N0}",
+            ContractBudgetKind.UpTo => $"{currency} até {budget.Maximum:N0}",
+            ContractBudgetKind.From => $"{currency} de {budget.Minimum:N0}",
+            _ => budget.Kind.ToString()
+        };
+    }
+
+    private static string GetStatusBadgeClass(ContractOpportunityStatus status) => status switch
+    {
+        ContractOpportunityStatus.New => "badge-new",
+        ContractOpportunityStatus.Shortlisted => "badge-shortlisted",
+        ContractOpportunityStatus.Ignored => "badge-ignored",
+        ContractOpportunityStatus.Archived => "badge-archived",
+        _ => ""
+    };
+
+    private static string GetRecommendationBadgeClass(string recommendation) => recommendation switch
+    {
+        "Prioritize" => "badge-go",
+        "Apply" => "badge-go",
+        "ConsiderWithCaution" => "badge-maybe",
+        "Skip" => "badge-nogo",
+        _ => ""
+    };
+}
