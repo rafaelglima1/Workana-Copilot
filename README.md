@@ -36,11 +36,13 @@ dotnet test --no-build
 - Deterministic proposal strategy (FHL-012) — estratégia de proposta determinística baseada em score e perfil
 - Blazor Web UI (FHL-013) — Inbox, Detalhe, Criar, Perfil — via HTTP client contra a API
 - Automated background processing (FHL-014) — Worker evalua oportunidades automaticamente, gera propostas para Go/Apply
+- Bulk opportunity import (FHL-015) — importação em lote via JSON, com relatório de erros
 
 API endpoints:
 
 - `GET /api/opportunities` — inbox com paginação, busca, filtros, ordenação
 - `POST /api/opportunities/manual` — criar oportunidade manual
+- `POST /api/opportunities/import` — importação em lote (JSON)
 - `GET /api/opportunities/{id}` — detalhe da oportunidade
 - `POST /api/opportunities/{id}/shortlist` → Shortlisted
 - `POST /api/opportunities/{id}/ignore` → Ignored
