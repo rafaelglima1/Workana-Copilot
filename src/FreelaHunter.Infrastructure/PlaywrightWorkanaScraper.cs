@@ -71,6 +71,18 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                         cards = await page.QuerySelectorAllAsync("a[href*='/jobs/']");
                     }
 
+                    if (cards.Count == 0)
+                    {
+                        _logger.LogWarning("Still no cards, dumping page HTML for debug");
+                        var html = await page.ContentAsync();
+                        var debugPath = Path.Combine(Path.GetTempPath(), $"workana-debug-page{pageNum}.html");
+                        await File.WriteAllTextAsync(debugPath, html);
+                        _logger.LogWarning("HTML saved to {Path}", debugPath);
+                        var screenshotPath = Path.Combine(Path.GetTempPath(), $"workana-debug-page{pageNum}.png");
+                        await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath, FullPage = true });
+                        _logger.LogWarning("Screenshot saved to {Path}", screenshotPath);
+                    }
+
                     _logger.LogInformation("Found {Count} cards on page {Page}", cards.Count, pageNum);
 
                     foreach (var card in cards)
