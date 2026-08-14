@@ -36,6 +36,12 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
         });
 
         var page = await context.NewPageAsync();
+
+        if (_options.LoginEnabled && !string.IsNullOrWhiteSpace(_options.Email))
+        {
+            await LoginAsync(page, cancellationToken);
+        }
+
         var opportunities = new List<ScrapedOpportunity>();
 
         try
@@ -82,6 +88,11 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                 if (pageNum < maxPages)
                     await page.WaitForTimeoutAsync(_options.PageDelayMs * 2);
             }
+
+            if (_options.VisitDetails)
+            {
+                await VisitDetailPagesAsync(page, opportunities, cancellationToken);
+            }
         }
         finally
         {
@@ -90,6 +101,128 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
         _logger.LogInformation("Scraped {Count} opportunities total", opportunities.Count);
         return opportunities;
+    }
+
+    private async Task LoginAsync(IPage page, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Logging into Workana...");
+
+        try
+        {
+            await page.GotoAsync("https://www.workana.com/login", new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = 30000
+            });
+
+            await page.WaitForTimeoutAsync(2000);
+
+            await page.FillAsync("input[name='email'], input[type='email'], #email", _options.Email!);
+            await page.WaitForTimeoutAsync(500);
+
+            if (!string.IsNullOrWhiteSpace(_options.Password))
+            {
+                await page.FillAsync("input[name='password'], input[type='password'], #password", _options.Password);
+                await page.WaitForTimeoutAsync(500);
+            }
+
+            await page.ClickAsync("button[type='submit'], input[type='submit']");
+            await page.WaitForTimeoutAsync(5000);
+
+            _logger.LogInformation("Workana login completed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Workana login failed. Continuing without authentication.");
+        }
+    }
+
+    private async Task VisitDetailPagesAsync(
+        IPage page,
+        List<ScrapedOpportunity> opportunities,
+        CancellationToken cancellationToken)
+    {
+        var indicesToVisit = opportunities
+            .Select((o, i) => new { o.ExternalUrl, Index = i })
+            .Where(o => !string.IsNullOrWhiteSpace(o.ExternalUrl))
+            .Take(20)
+            .Select(o => o.Index)
+            .ToList();
+
+        _logger.LogInformation("Visiting {Count} detail pages...", indicesToVisit.Count);
+
+        foreach (var idx in indicesToVisit)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var opp = opportunities[idx];
+            try
+            {
+                _logger.LogDebug("Visiting detail: {Url}", opp.ExternalUrl);
+                await page.GotoAsync(opp.ExternalUrl!, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.NetworkIdle,
+                    Timeout = 30000
+                });
+
+                await page.WaitForTimeoutAsync(_options.DetailDelayMs);
+
+                var fullDesc = await page.QuerySelectorAsync(".project-description, .job-description, [class*='description']");
+                if (fullDesc is not null)
+                {
+                    var descText = (await fullDesc.TextContentAsync())?.Trim();
+                    if (!string.IsNullOrWhiteSpace(descText) && descText.Length > opp.Description.Length)
+                    {
+                        opportunities[idx] = opp with { Description = descText.Length > 5000 ? descText[..5000] : descText };
+                        opp = opportunities[idx];
+                    }
+                }
+
+                var skillsEl = await page.QuerySelectorAllAsync(".skill, .tag, [class*='skill'], [class*='tag'], .badge");
+                if (skillsEl.Count > opp.RequiredSkills.Count)
+                {
+                    var newSkills = new List<string>();
+                    foreach (var s in skillsEl)
+                    {
+                        var text = (await s.TextContentAsync())?.Trim();
+                        if (!string.IsNullOrWhiteSpace(text))
+                            newSkills.Add(text);
+                    }
+                    if (newSkills.Count > 0)
+                    {
+                        opportunities[idx] = opp with { RequiredSkills = newSkills };
+                        opp = opportunities[idx];
+                    }
+                }
+
+                var budgetEl = await page.QuerySelectorAsync(".budget, [class*='budget'], [class*='price']");
+                if (budgetEl is not null)
+                {
+                    var budgetText = (await budgetEl.TextContentAsync())?.Trim();
+                    if (!string.IsNullOrWhiteSpace(budgetText))
+                    {
+                        opportunities[idx] = opp with { BudgetSummary = budgetText };
+                        opp = opportunities[idx];
+                    }
+                }
+
+                var clientEl = await page.QuerySelectorAsync(".client-info, [class*='client'], .company-name");
+                if (clientEl is not null)
+                {
+                    var clientText = (await clientEl.TextContentAsync())?.Trim();
+                    if (!string.IsNullOrWhiteSpace(clientText))
+                    {
+                        var parts = clientText.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length > 0)
+                            opportunities[idx] = opp with { ClientCountry = parts[0].Trim() };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to visit detail page: {Url}", opp.ExternalUrl);
+            }
+        }
     }
 
     private async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card, CancellationToken cancellationToken)

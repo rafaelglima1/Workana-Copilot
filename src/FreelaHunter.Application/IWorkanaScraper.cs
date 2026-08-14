@@ -7,7 +7,7 @@ public interface IWorkanaScraper
         CancellationToken cancellationToken);
 }
 
-public sealed class ScrapedOpportunity
+public sealed record ScrapedOpportunity
 {
     public required string Title { get; init; }
     public required string Description { get; init; }
