@@ -54,4 +54,8 @@ API endpoints:
 
 Para utilizar LLM, configurar `MiMo__ApiKey` via env var. Provider: MiMo. Model: mimo-v2.5. Testes automatizados não necessitam de LLM.
 
-Integrações externas (Workana, Gmail, scraping) ainda **não foram implementadas**.
+Integrações externas:
+- ✅ Workana scraper (Playwright headless browser, integrado ao Worker)
+- Gmail integration (notificação de novas oportunidades) — pendente
+- Docker Compose disponível (docker-compose.yml)
+- LLM fallback: sistema funciona sem API key (análise neutra)
