@@ -35,6 +35,9 @@ public static class ServiceCollectionExtensions
         services.Configure<MiMoOptions>(
             configuration.GetSection(MiMoOptions.SectionName));
 
+        services.Configure<WorkanaScraperOptions>(
+            configuration.GetSection(WorkanaScraperOptions.SectionName));
+
         services.AddHttpClient<IOpportunityIntelligenceGateway, MiMoOpportunityIntelligenceGateway>(
             client =>
             {
@@ -43,6 +46,8 @@ public static class ServiceCollectionExtensions
                 client.BaseAddress = new Uri(options.BaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             });
+
+        services.AddSingleton<IWorkanaScraper, PlaywrightWorkanaScraper>();
 
         return services;
     }

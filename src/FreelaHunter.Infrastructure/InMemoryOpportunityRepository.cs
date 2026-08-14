@@ -26,4 +26,10 @@ public sealed class InMemoryOpportunityRepository : IOpportunityRepository
         _store[opportunity.Id.Value] = opportunity;
         return Task.CompletedTask;
     }
+
+    public Task<Opportunity?> GetByExternalReferenceAsync(string externalReference, CancellationToken cancellationToken)
+    {
+        var opportunity = _store.Values.FirstOrDefault(o => o.ExternalReference == externalReference);
+        return Task.FromResult(opportunity);
+    }
 }

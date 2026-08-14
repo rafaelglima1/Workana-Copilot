@@ -29,4 +29,10 @@ internal sealed class FakeOpportunityRepository : IOpportunityRepository
         UpdatedOpportunities.Add(opportunity);
         return Task.CompletedTask;
     }
+
+    public Task<Opportunity?> GetByExternalReferenceAsync(string externalReference, CancellationToken cancellationToken)
+    {
+        var opportunity = _store.Values.FirstOrDefault(o => o.ExternalReference == externalReference);
+        return Task.FromResult(opportunity);
+    }
 }

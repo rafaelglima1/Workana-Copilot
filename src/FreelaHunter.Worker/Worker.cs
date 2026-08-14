@@ -1,4 +1,7 @@
 using FreelaHunter.Application;
+using FreelaHunter.Contracts.Opportunities;
+using FreelaHunter.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,22 +26,31 @@ public sealed class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromSeconds(_options.Value.IntervalSeconds);
+        var evalInterval = TimeSpan.FromSeconds(_options.Value.IntervalSeconds);
+        var scrapeInterval = TimeSpan.FromMinutes(_options.Value.ScrapeIntervalMinutes);
+
+        var lastScrape = DateTime.MinValue;
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await RunCycleAsync(stoppingToken);
+                await RunEvaluationCycleAsync(stoppingToken);
+
+                if (DateTime.UtcNow - lastScrape >= scrapeInterval)
+                {
+                    await RunScrapeCycleAsync(stoppingToken);
+                    lastScrape = DateTime.UtcNow;
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Error during opportunity processing cycle.");
+                _logger.LogError(ex, "Error during worker cycle.");
             }
 
             try
             {
-                await Task.Delay(interval, stoppingToken);
+                await Task.Delay(evalInterval, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -47,7 +59,7 @@ public sealed class Worker : BackgroundService
         }
     }
 
-    private async Task RunCycleAsync(CancellationToken cancellationToken)
+    private async Task RunEvaluationCycleAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var processor = scope.ServiceProvider.GetRequiredService<OpportunityBackgroundProcessor>();
@@ -56,14 +68,92 @@ public sealed class Worker : BackgroundService
         if (result.Evaluated > 0 || result.Failed > 0)
         {
             _logger.LogInformation(
-                "Opportunity processing cycle: {Evaluated} evaluated, {Proposals} proposals, {Failed} failed.",
+                "Evaluation cycle: {Evaluated} evaluated, {Proposals} proposals, {Failed} failed.",
                 result.Evaluated,
                 result.ProposalsGenerated,
                 result.Failed);
         }
-        else
+    }
+
+    private async Task RunScrapeCycleAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Starting Workana scrape cycle...");
+
+        using var scope = _scopeFactory.CreateScope();
+        var scraper = scope.ServiceProvider.GetRequiredService<IWorkanaScraper>();
+        var repository = scope.ServiceProvider.GetRequiredService<IOpportunityRepository>();
+
+        try
         {
-            _logger.LogDebug("No pending opportunities to process.");
+            var scraped = await scraper.ScrapeAsync(_options.Value.ScrapeMaxPages, cancellationToken);
+
+            var imported = 0;
+            var skipped = 0;
+
+            foreach (var item in scraped)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.IsNullOrWhiteSpace(item.ExternalUrl))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var existing = await repository.GetByExternalReferenceAsync(
+                    item.ExternalUrl, cancellationToken);
+
+                if (existing is not null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var request = new CreateManualOpportunityRequest
+                {
+                    Marketplace = ContractMarketplace.Workana,
+                    Title = item.Title,
+                    Description = item.Description,
+                    Category = item.Category,
+                    Subcategory = item.Subcategory,
+                    RequiredSkills = item.RequiredSkills,
+                    Budget = MapBudgetFromSummary(item.BudgetSummary),
+                    Client = new ClientInput
+                    {
+                        Country = item.ClientCountry
+                    },
+                    Competition = item.ProposalsCount.HasValue
+                        ? new CompetitionInput { ProposalCount = item.ProposalsCount.Value }
+                        : null,
+                    ExternalReference = item.ExternalUrl,
+                    PublishedAt = item.PublishedAt
+                };
+
+                var createHandler = scope.ServiceProvider.GetRequiredService<CreateManualOpportunityHandler>();
+                await createHandler.HandleAsync(request, cancellationToken);
+                imported++;
+            }
+
+            _logger.LogInformation(
+                "Scrape cycle complete: {Imported} new, {Skipped} skipped (duplicates or no URL).",
+                imported, skipped);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Scrape cycle failed.");
+        }
+    }
+
+    private static BudgetInput? MapBudgetFromSummary(string? budgetSummary)
+    {
+        if (string.IsNullOrWhiteSpace(budgetSummary))
+            return null;
+
+        return new BudgetInput
+        {
+            Kind = ContractBudgetKind.Range,
+            Basis = ContractBudgetBasis.FixedProject,
+            Currency = "USD"
+        };
     }
 }

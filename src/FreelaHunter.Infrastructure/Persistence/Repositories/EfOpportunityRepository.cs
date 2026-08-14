@@ -47,4 +47,17 @@ public sealed class EfOpportunityRepository : IOpportunityRepository
         OpportunityPersistenceMapper.UpdateRecord(record, opportunity);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Opportunity?> GetByExternalReferenceAsync(string externalReference, CancellationToken cancellationToken)
+    {
+        var record = await _context.Opportunities
+            .AsNoTracking()
+            .Include(o => o.Skills)
+            .FirstOrDefaultAsync(o => o.ExternalReference == externalReference, cancellationToken);
+
+        if (record is null)
+            return null;
+
+        return OpportunityPersistenceMapper.ToDomain(record);
+    }
 }

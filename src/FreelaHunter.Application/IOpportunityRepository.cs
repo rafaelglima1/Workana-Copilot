@@ -7,5 +7,6 @@ public interface IOpportunityRepository
 {
     Task AddAsync(Opportunity opportunity, CancellationToken cancellationToken);
     Task<Opportunity?> GetByIdAsync(OpportunityId id, CancellationToken cancellationToken);
+    Task<Opportunity?> GetByExternalReferenceAsync(string externalReference, CancellationToken cancellationToken);
     Task UpdateAsync(Opportunity opportunity, CancellationToken cancellationToken);
 }
