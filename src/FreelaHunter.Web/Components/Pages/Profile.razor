@@ -331,52 +331,84 @@ else
         _saved = false;
         _error = null;
         _saveMessage = null;
+        string? profileError = null;
+        string? settingsError = null;
         StateHasChanged();
 
         try
         {
-            await Api.SaveProfileAsync(new SaveFreelancerProfileRequest
+            try
             {
-                Skills = _skills.Select(s => new ProfileSkillInput
+                await Api.SaveProfileAsync(new SaveFreelancerProfileRequest
                 {
-                    Name = s.Name,
-                    Level = Enum.Parse<ContractSkillLevel>(s.Level)
-                }).ToList(),
-                HourlyRateTargets = _rates.Select(r => new ProfileRateInput
-                {
-                    Amount = r.Amount,
-                    Currency = r.Currency
-                }).ToList(),
-                DefaultRateCurrency = _defaultCurrency?.Trim().ToUpper() ?? "BRL",
-                WeeklyCapacityHours = _weeklyCapacityHours
-            });
+                    Skills = _skills.Select(s => new ProfileSkillInput
+                    {
+                        Name = s.Name,
+                        Level = Enum.Parse<ContractSkillLevel>(s.Level)
+                    }).ToList(),
+                    HourlyRateTargets = _rates.Select(r => new ProfileRateInput
+                    {
+                        Amount = r.Amount,
+                        Currency = r.Currency
+                    }).ToList(),
+                    DefaultRateCurrency = _defaultCurrency?.Trim().ToUpper() ?? "BRL",
+                    WeeklyCapacityHours = _weeklyCapacityHours
+                });
+            }
+            catch (Exception ex)
+            {
+                profileError = ex.Message;
+            }
 
-            await Api.UpdateSettingsAsync(new UpdateSettingsRequest
+            try
             {
-                Llm = new LlmUpdateRequest
+                await Api.UpdateSettingsAsync(new UpdateSettingsRequest
                 {
-                    Provider = _llmProvider,
-                    Model = _llmModel,
-                    ApiKey = string.IsNullOrWhiteSpace(_llmApiKey) ? null : _llmApiKey
-                },
-                Telegram = new TelegramUpdateRequest
-                {
-                    BotToken = _telegramToken,
-                    ChatId = _telegramChatId,
-                    Enabled = _telegramEnabled
-                },
-                Scraper = new ScraperUpdateRequest
-                {
-                    Technology = _scraperTech,
-                    MaxPages = _scraperMaxPages,
-                    ScrapeIntervalMinutes = _scraperInterval,
-                    LoginEnabled = _scraperLoginEnabled,
-                    Email = _scraperEmail
-                }
-            });
+                    Llm = new LlmUpdateRequest
+                    {
+                        Provider = _llmProvider,
+                        Model = _llmModel,
+                        ApiKey = string.IsNullOrWhiteSpace(_llmApiKey) ? null : _llmApiKey
+                    },
+                    Telegram = new TelegramUpdateRequest
+                    {
+                        BotToken = _telegramToken,
+                        ChatId = _telegramChatId,
+                        Enabled = _telegramEnabled
+                    },
+                    Scraper = new ScraperUpdateRequest
+                    {
+                        Technology = _scraperTech,
+                        MaxPages = _scraperMaxPages,
+                        ScrapeIntervalMinutes = _scraperInterval,
+                        LoginEnabled = _scraperLoginEnabled,
+                        Email = _scraperEmail
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                settingsError = ex.Message;
+            }
 
             _saved = true;
-            _saveMessage = "Configurações salvas! Reinicie a API/Worker para aplicar mudanças de LLM/Telegram.";
+            if (profileError is not null && settingsError is not null)
+            {
+                _error = $"Perfil: {profileError}\nConfigurações: {settingsError}";
+                _saved = false;
+            }
+            else if (profileError is not null)
+            {
+                _saveMessage = $"Configurações salvas! Erro no perfil: {profileError}";
+            }
+            else if (settingsError is not null)
+            {
+                _saveMessage = $"Perfil salvo! Erro nas configurações: {settingsError}";
+            }
+            else
+            {
+                _saveMessage = "Tudo salvo! Reinicie a API/Worker para aplicar mudanças de LLM/Telegram.";
+            }
         }
         catch (Exception ex)
         {

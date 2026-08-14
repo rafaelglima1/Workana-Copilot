@@ -3,12 +3,13 @@
 <div class="page">
     <nav class="sidebar">
         <div class="sidebar-brand">
-            <a href="/" class="brand-link">
+            <a href="/dashboard" class="brand-link">
                 <span class="brand-icon">FH</span>
                 <span class="brand-text">FreelaHunter</span>
             </a>
         </div>
         <div class="nav-menu">
+            <div class="nav-section">Principal</div>
             <NavLink href="/dashboard" class="nav-item" Match="NavLinkMatch.All">
                 <span class="nav-icon">📊</span>
                 <span class="nav-text">Dashboard</span>
@@ -17,6 +18,8 @@
                 <span class="nav-icon">📥</span>
                 <span class="nav-text">Inbox</span>
             </NavLink>
+
+            <div class="nav-section">Dados</div>
             <NavLink href="/scraper" class="nav-item" Match="NavLinkMatch.Prefix">
                 <span class="nav-icon">🕷️</span>
                 <span class="nav-text">Scraper</span>
@@ -26,13 +29,18 @@
                 <span class="nav-text">Nova Oportunidade</span>
             </NavLink>
             <NavLink href="/import" class="nav-item" Match="NavLinkMatch.Prefix">
-                <span class="nav-icon">📥</span>
-                <span class="nav-text">Importar</span>
+                <span class="nav-icon">📄</span>
+                <span class="nav-text">Importar JSON</span>
             </NavLink>
+
+            <div class="nav-section">Sistema</div>
             <NavLink href="/profile" class="nav-item" Match="NavLinkMatch.Prefix">
-                <span class="nav-icon">👤</span>
-                <span class="nav-text">Meu Perfil</span>
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Configurações</span>
             </NavLink>
+        </div>
+        <div class="sidebar-footer">
+            <small>v1.0</small>
         </div>
     </nav>
 
