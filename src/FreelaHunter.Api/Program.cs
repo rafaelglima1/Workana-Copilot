@@ -39,6 +39,7 @@ app.MapOpportunityEndpoints();
 app.MapOpportunityInboxEndpoints();
 app.MapFreelancerProfileEndpoints();
 app.MapProposalStrategyEndpoints();
+app.MapSettingsEndpoints();
 
 app.Run();
 

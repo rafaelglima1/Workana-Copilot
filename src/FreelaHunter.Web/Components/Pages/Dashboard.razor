@@ -1,4 +1,4 @@
-@page "/"
+@page "/dashboard"
 @inject FreelaHunterApiClient Api
 @rendermode InteractiveServer
 
@@ -6,143 +6,73 @@
 
 <h1 class="page-title">📊 Dashboard</h1>
 
-@if (_stats is null)
+@if (_loading)
 {
     <div class="text-center py-5">
         <div class="spinner-border text-primary"></div>
-        <p class="mt-3">Carregando estatísticas...</p>
     </div>
 }
 else
 {
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
-                    <h2 class="text-primary">@_stats.Total</h2>
-                    <p class="text-muted mb-0">Total</p>
+                    <h2 class="text-primary">@_total</h2>
+                    <p class="text-muted mb-0">Total de Oportunidades</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
-                    <h2 class="text-success">@_stats.Prioritize</h2>
+                    <h2 class="text-success">@_prioritize</h2>
                     <p class="text-muted mb-0">Priorizar</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body">
-                    <h2 class="text-info">@_stats.Apply</h2>
+                    <h2 class="text-info">@_apply</h2>
                     <p class="text-muted mb-0">Aplicar</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h2 class="text-warning">@_stats.Skipped</h2>
-                    <p class="text-muted mb-0">Pulados</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Por Status</div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tbody>
-                            @foreach (var s in _stats.ByStatus)
-                            {
-                                <tr>
-                                    <td>@s.Status</td>
-                                    <td class="text-end"><strong>@s.Count</strong></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Por Marketplace</div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tbody>
-                            @foreach (var m in _stats.ByMarketplace)
-                            {
-                                <tr>
-                                    <td>@m.Marketplace</td>
-                                    <td class="text-end"><strong>@m.Count</strong></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="mb-3">
-        <a href="/inbox" class="btn btn-primary">Ver Inbox</a>
-        <a href="/import" class="btn btn-outline-secondary">Importar</a>
+        <a href="/inbox" class="btn btn-primary">📥 Ver Inbox</a>
+        <a href="/import" class="btn btn-outline-secondary">📥 Importar</a>
+        <a href="/opportunities/create" class="btn btn-outline-secondary">➕ Criar</a>
+        <a href="/profile" class="btn btn-outline-secondary">👤 Perfil</a>
     </div>
 }
 
 @code {
-    private DashboardStats? _stats;
+    private bool _loading = true;
+    private int _total;
+    private int _prioritize;
+    private int _apply;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var result = await Api.SearchOpportunitiesAsync(new OpportunitySearchRequest { PageSize = 1 });
+            var result = await Api.GetInboxAsync(pageSize: 1);
+            _total = result?.TotalCount ?? 0;
 
-            var prioritize = await Api.SearchOpportunitiesAsync(new OpportunitySearchRequest { Recommendation = "Prioritize", PageSize = 1 });
-            var apply = await Api.SearchOpportunitiesAsync(new OpportunitySearchRequest { Recommendation = "Apply", PageSize = 1 });
-            var skipped = await Api.SearchOpportunitiesAsync(new OpportunitySearchRequest { Recommendation = "Skip", PageSize = 1 });
+            var priorize = await Api.GetInboxAsync(pageSize: 1, recommendation: "Prioritize");
+            _prioritize = priorize?.TotalCount ?? 0;
 
-            _stats = new DashboardStats
-            {
-                Total = result?.TotalCount ?? 0,
-                Prioritize = prioritize?.TotalCount ?? 0,
-                Apply = apply?.TotalCount ?? 0,
-                Skipped = skipped?.TotalCount ?? 0,
-                ByStatus = [],
-                ByMarketplace = []
-            };
+            var applyResult = await Api.GetInboxAsync(pageSize: 1, recommendation: "Apply");
+            _apply = applyResult?.TotalCount ?? 0;
         }
         catch
         {
-            _stats = new DashboardStats();
+            _total = 0;
         }
-    }
 
-    private class DashboardStats
-    {
-        public int Total { get; set; }
-        public int Prioritize { get; set; }
-        public int Apply { get; set; }
-        public int Skipped { get; set; }
-        public List<StatusCount> ByStatus { get; set; } = [];
-        public List<MarketplaceCount> ByMarketplace { get; set; } = [];
-    }
-
-    private class StatusCount
-    {
-        public string Status { get; set; } = "";
-        public int Count { get; set; }
-    }
-
-    private class MarketplaceCount
-    {
-        public string Marketplace { get; set; } = "";
-        public int Count { get; set; }
+        _loading = false;
     }
 }

@@ -146,6 +146,24 @@ public sealed class FreelaHunterApiClient
         return await _httpClient.GetFromJsonAsync<PagedOpportunityResponse>(
             $"/api/opportunities{query}", cancellationToken);
     }
+
+    public async Task<SettingsResponse?> GetSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        return await _httpClient.GetFromJsonAsync<SettingsResponse>("/api/settings", cancellationToken);
+    }
+
+    public async Task UpdateSettingsAsync(UpdateSettingsRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PutAsJsonAsync("/api/settings", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<ScraperRunResult?> RunScraperAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/scraper/run", new { }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ScraperRunResult>(cancellationToken);
+    }
 }
 
 public sealed class OpportunitySearchRequest
@@ -155,4 +173,72 @@ public sealed class OpportunitySearchRequest
     public string? Search { get; init; }
     public string? Recommendation { get; init; }
     public string? Sort { get; init; }
+}
+
+public sealed class SettingsResponse
+{
+    public LlmSettingsResponse? Llm { get; set; }
+    public TelegramSettingsResponse? Telegram { get; set; }
+    public ScraperSettingsResponse? Scraper { get; set; }
+}
+
+public sealed class LlmSettingsResponse
+{
+    public string Provider { get; set; } = "";
+    public string Model { get; set; } = "";
+    public bool HasApiKey { get; set; }
+}
+
+public sealed class TelegramSettingsResponse
+{
+    public string BotToken { get; set; } = "";
+    public string ChatId { get; set; } = "";
+    public bool Enabled { get; set; }
+}
+
+public sealed class ScraperSettingsResponse
+{
+    public string BaseUrl { get; set; } = "";
+    public string Technology { get; set; } = "";
+    public int MaxPages { get; set; }
+    public bool LoginEnabled { get; set; }
+    public string Email { get; set; } = "";
+    public int ScrapeIntervalMinutes { get; set; }
+}
+
+public sealed class UpdateSettingsRequest
+{
+    public LlmUpdateRequest? Llm { get; set; }
+    public TelegramUpdateRequest? Telegram { get; set; }
+    public ScraperUpdateRequest? Scraper { get; set; }
+}
+
+public sealed class LlmUpdateRequest
+{
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
+    public string? ApiKey { get; set; }
+}
+
+public sealed class TelegramUpdateRequest
+{
+    public string? BotToken { get; set; }
+    public string? ChatId { get; set; }
+    public bool? Enabled { get; set; }
+}
+
+public sealed class ScraperUpdateRequest
+{
+    public string? Technology { get; set; }
+    public int? MaxPages { get; set; }
+    public int? ScrapeIntervalMinutes { get; set; }
+    public bool? LoginEnabled { get; set; }
+    public string? Email { get; set; }
+}
+
+public sealed class ScraperRunResult
+{
+    public int Imported { get; set; }
+    public int Skipped { get; set; }
+    public int Total { get; set; }
 }

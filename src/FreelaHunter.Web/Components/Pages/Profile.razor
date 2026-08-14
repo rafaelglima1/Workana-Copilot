@@ -9,16 +9,14 @@
 @if (_loading)
 {
     <div class="text-center py-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Carregando...</span>
-        </div>
+        <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
 else
 {
     @if (_saved)
     {
-        <div class="alert alert-success">Perfil salvo com sucesso!</div>
+        <div class="alert alert-success">@(_saveMessage ?? "Salvo com sucesso!")</div>
     }
 
     @if (_error is not null)
@@ -50,22 +48,14 @@ else
                     else
                     {
                         <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Skill</th>
-                                    <th>Nível</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Skill</th><th>Nível</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var skill in _skills)
                                 {
                                     <tr>
                                         <td>@skill.Name</td>
                                         <td>@skill.Level</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSkill(skill)">✕</button>
-                                        </td>
+                                        <td><button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSkill(skill)">✕</button></td>
                                     </tr>
                                 }
                             </tbody>
@@ -90,27 +80,113 @@ else
                     else
                     {
                         <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Valor</th>
-                                    <th>Moeda</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Valor</th><th>Moeda</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var rate in _rates)
                                 {
                                     <tr>
                                         <td>@rate.Amount.ToString("N2")</td>
                                         <td>@rate.Currency</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRate(rate)">✕</button>
-                                        </td>
+                                        <td><button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRate(rate)">✕</button></td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">🤖 LLM (Análise Inteligente)</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Provider URL</label>
+                            <input type="text" class="form-control" @bind="_llmProvider" placeholder="https://api.xiaomimimo.com/v1" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Modelo</label>
+                            <input type="text" class="form-control" @bind="_llmModel" placeholder="mimo-v2.5" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-control" @bind="_llmApiKey" placeholder="@(_llmHasApiKey ? "•••••••• (definida)" : "Não configurada")" />
+                            <small class="form-text text-muted">@(_llmHasApiKey ? "Chave já configurada. Deixe vazio para manter." : "Sem chave, usa análise neutra.")</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">📱 Telegram (Notificações)</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Bot Token</label>
+                            <input type="password" class="form-control" @bind="_telegramToken" placeholder="@(_telegramHasToken ? "•••••••• (definido)" : "123456:ABC-DEF...")" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Chat ID</label>
+                            <input type="text" class="form-control" @bind="_telegramChatId" placeholder="-1001234567890" />
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" @bind="_telegramEnabled" />
+                                <label class="form-check-label">Ativar notificações</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">🕷️ Scraper Workana</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tecnologia</label>
+                            <input type="text" class="form-control" @bind="_scraperTech" placeholder="python, react, etc." />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Max Páginas</label>
+                            <input type="number" class="form-control" @bind="_scraperMaxPages" min="1" max="20" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Intervalo (min)</label>
+                            <input type="number" class="form-control" @bind="_scraperInterval" min="5" max="1440" />
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="_scraperLoginEnabled" />
+                                <label class="form-check-label">Fazer login no Workana</label>
+                            </div>
+                        </div>
+                        @if (_scraperLoginEnabled)
+                        {
+                            <div class="col-md-6">
+                                <label class="form-label">Email Workana</label>
+                                <input type="email" class="form-control" @bind="_scraperEmail" placeholder="seu@email.com" />
+                            </div>
+                        }
+                    </div>
+                    <hr />
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-warning" @onclick="RunScraperNow" disabled="@_scraperRunning">
+                        @if (_scraperRunning)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            @("Executando...")
+                        }
+                            else
+                            {
+                                <span>🕷️ Atualizar agora</span>
+                            }
+                        </button>
+                        @if (_scraperResult is not null)
+                        {
+                            <span class="align-self-center text-muted"> @_scraperResult</span>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,17 +202,16 @@ else
                     <div class="mb-3">
                         <label class="form-label">Capacidade Semanal (horas)</label>
                         <input type="number" class="form-control" @bind="_weeklyCapacityHours" min="0" max="168" step="0.5" />
-                        <small class="form-text text-muted">Ex: 20h/semana. Deixe vazio para usar 8h/dia.</small>
                     </div>
                 </div>
             </div>
 
-            <button class="btn btn-primary w-100" @onclick="SaveProfile" disabled="@_saving">
+            <button class="btn btn-primary w-100 mb-3" @onclick="SaveAll" disabled="@_saving">
                 @if (_saving)
                 {
                     <span class="spinner-border spinner-border-sm me-1"></span>
                 }
-                Salvar Perfil
+                Salvar Tudo
             </button>
         </div>
     </div>
@@ -147,16 +222,34 @@ else
     private bool _saving;
     private bool _saved;
     private string? _error;
+    private string? _saveMessage;
 
     private List<SkillDto> _skills = [];
     private List<RateDto> _rates = [];
     private string _defaultCurrency = "BRL";
     private decimal? _weeklyCapacityHours;
-
     private string _newSkillName = "";
     private string _newSkillLevel = "Working";
     private decimal _newRateAmount;
     private string _newRateCurrency = "BRL";
+
+    private string _llmProvider = "";
+    private string _llmModel = "mimo-v2.5";
+    private string _llmApiKey = "";
+    private bool _llmHasApiKey;
+
+    private string _telegramToken = "";
+    private string _telegramChatId = "";
+    private bool _telegramEnabled;
+    private bool _telegramHasToken;
+
+    private string _scraperTech = "";
+    private int _scraperMaxPages = 3;
+    private int _scraperInterval = 60;
+    private bool _scraperLoginEnabled;
+    private string _scraperEmail = "";
+    private bool _scraperRunning;
+    private string? _scraperResult;
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,10 +264,34 @@ else
                 _weeklyCapacityHours = profile.WeeklyCapacityHours;
             }
         }
-        catch
+        catch { }
+
+        try
         {
-            // new profile
+            var settings = await Api.GetSettingsAsync();
+            if (settings?.Llm is not null)
+            {
+                _llmProvider = settings.Llm.Provider;
+                _llmModel = settings.Llm.Model;
+                _llmHasApiKey = settings.Llm.HasApiKey;
+            }
+            if (settings?.Telegram is not null)
+            {
+                _telegramToken = settings.Telegram.BotToken;
+                _telegramChatId = settings.Telegram.ChatId;
+                _telegramEnabled = settings.Telegram.Enabled;
+                _telegramHasToken = !string.IsNullOrWhiteSpace(settings.Telegram.BotToken);
+            }
+            if (settings?.Scraper is not null)
+            {
+                _scraperTech = settings.Scraper.Technology;
+                _scraperMaxPages = settings.Scraper.MaxPages > 0 ? settings.Scraper.MaxPages : 3;
+                _scraperInterval = settings.Scraper.ScrapeIntervalMinutes > 0 ? settings.Scraper.ScrapeIntervalMinutes : 60;
+                _scraperLoginEnabled = settings.Scraper.LoginEnabled;
+                _scraperEmail = settings.Scraper.Email;
+            }
         }
+        catch { }
 
         _loading = false;
     }
@@ -183,23 +300,15 @@ else
     {
         var name = _newSkillName?.Trim();
         if (!string.IsNullOrEmpty(name) && !_skills.Any(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-        {
             _skills.Add(new SkillDto { Name = name, Level = _newSkillLevel });
-        }
         _newSkillName = "";
     }
 
-    private void RemoveSkill(SkillDto skill)
-    {
-        _skills.Remove(skill);
-    }
+    private void RemoveSkill(SkillDto skill) => _skills.Remove(skill);
 
     private void OnSkillKeyUp(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter")
-        {
-            AddSkill();
-        }
+        if (e.Key == "Enter") AddSkill();
     }
 
     private void AddRate()
@@ -208,29 +317,25 @@ else
         {
             var currency = _newRateCurrency.Trim().ToUpper();
             if (!_rates.Any(r => r.Currency.Equals(currency, StringComparison.OrdinalIgnoreCase)))
-            {
                 _rates.Add(new RateDto { Amount = _newRateAmount, Currency = currency });
-            }
         }
         _newRateAmount = 0;
         _newRateCurrency = "BRL";
     }
 
-    private void RemoveRate(RateDto rate)
-    {
-        _rates.Remove(rate);
-    }
+    private void RemoveRate(RateDto rate) => _rates.Remove(rate);
 
-    private async Task SaveProfile()
+    private async Task SaveAll()
     {
         _saving = true;
         _saved = false;
         _error = null;
+        _saveMessage = null;
         StateHasChanged();
 
         try
         {
-            var request = new SaveFreelancerProfileRequest
+            await Api.SaveProfileAsync(new SaveFreelancerProfileRequest
             {
                 Skills = _skills.Select(s => new ProfileSkillInput
                 {
@@ -244,29 +349,68 @@ else
                 }).ToList(),
                 DefaultRateCurrency = _defaultCurrency?.Trim().ToUpper() ?? "BRL",
                 WeeklyCapacityHours = _weeklyCapacityHours
-            };
+            });
 
-            await Api.SaveProfileAsync(request);
+            await Api.UpdateSettingsAsync(new UpdateSettingsRequest
+            {
+                Llm = new LlmUpdateRequest
+                {
+                    Provider = _llmProvider,
+                    Model = _llmModel,
+                    ApiKey = string.IsNullOrWhiteSpace(_llmApiKey) ? null : _llmApiKey
+                },
+                Telegram = new TelegramUpdateRequest
+                {
+                    BotToken = _telegramToken,
+                    ChatId = _telegramChatId,
+                    Enabled = _telegramEnabled
+                },
+                Scraper = new ScraperUpdateRequest
+                {
+                    Technology = _scraperTech,
+                    MaxPages = _scraperMaxPages,
+                    ScrapeIntervalMinutes = _scraperInterval,
+                    LoginEnabled = _scraperLoginEnabled,
+                    Email = _scraperEmail
+                }
+            });
+
             _saved = true;
+            _saveMessage = "Configurações salvas! Reinicie a API/Worker para aplicar mudanças de LLM/Telegram.";
         }
         catch (Exception ex)
         {
-            _error = $"Erro ao salvar perfil: {ex.Message}";
+            _error = $"Erro ao salvar: {ex.Message}";
         }
 
         _saving = false;
         StateHasChanged();
     }
 
-    private class SkillDto
+    private async Task RunScraperNow()
     {
-        public string Name { get; set; } = "";
-        public string Level { get; set; } = "Working";
+        _scraperRunning = true;
+        _scraperResult = null;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Api.RunScraperAsync();
+            if (result is not null)
+                _scraperResult = $"✅ {result.Imported} novas, {result.Skipped} ignoradas de {result.Total} encontradas.";
+            else
+                _scraperResult = "Concluído.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Erro no scraper: {ex.Message}";
+        }
+
+        _scraperRunning = false;
+        StateHasChanged();
     }
 
-    private class RateDto
-    {
-        public decimal Amount { get; set; }
-        public string Currency { get; set; } = "BRL";
-    }
+    private class SkillDto { public string Name { get; set; } = ""; public string Level { get; set; } = "Working"; }
+    private class RateDto { public decimal Amount { get; set; } public string Currency { get; set; } = "BRL"; }
 }
