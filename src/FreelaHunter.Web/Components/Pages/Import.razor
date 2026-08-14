@@ -1,0 +1,171 @@
+@page "/import"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>Importar - FreelaHunter</PageTitle>
+
+<h1 class="page-title">📥 Importar Oportunidades</h1>
+
+@if (_result is not null)
+{
+    <div class="alert @(_result.Failed == 0 ? "alert-success" : "alert-warning")">
+        <strong>@_result.Imported</strong> importada(s) com sucesso.
+        @if (_result.Failed > 0)
+        {
+            <span> <strong>@_result.Failed</strong> falha(s).</span>
+        }
+    </div>
+
+    @if (_result.Errors.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">Erros</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Título</th>
+                            <th>Erro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var error in _result.Errors)
+                        {
+                            <tr>
+                                <td>@error.Index</td>
+                                <td>@(error.Title ?? "—")</td>
+                                <td class="text-danger">@error.Error</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="mb-3">
+        <a href="/inbox" class="btn btn-primary">Ver Inbox</a>
+        <button class="btn btn-outline-secondary" @onclick="Reset">Importar Mais</button>
+    </div>
+}
+else
+{
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header">Como importar</div>
+        <div class="card-body">
+            <p>Cole um JSON com a lista de oportunidades no formato:</p>
+            <pre class="bg-light p-3 rounded"><code>{
+  "items": [
+    {
+      "marketplace": "Workana",
+      "title": "Projeto API",
+      "description": "Descrição do projeto",
+      "budget": { "kind": "Range", "basis": "FixedProject", "minimum": 5000, "maximum": 15000, "currency": "BRL" },
+      "requiredSkills": ["C#", "ASP.NET Core"]
+    }
+  ]
+}</code></pre>
+            <p class="text-muted small">Campos opcionais: category, subcategory, externalReference, client, competition, publishedAt, clientDeadline.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">JSON *</label>
+                <textarea class="form-control font-monospace" @bind="_jsonInput" rows="15" placeholder='{"items": [...]}'></textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="ImportJson" disabled="@(_saving || string.IsNullOrWhiteSpace(_jsonInput))">
+                    @if (_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    Importar
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="LoadSample">Carregar Exemplo</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _jsonInput = "";
+    private bool _saving;
+    private string? _error;
+    private ImportOpportunitiesResponse? _result;
+
+    private void LoadSample()
+    {
+        _jsonInput = System.Text.Json.JsonSerializer.Serialize(new ImportOpportunitiesRequest
+        {
+            Items =
+            [
+                new CreateManualOpportunityRequest
+                {
+                    Marketplace = ContractMarketplace.Workana,
+                    Title = "Exemplo: App Mobile Flutter",
+                    Description = "Desenvolvimento de app mobile multiplatform",
+                    Budget = new BudgetInput { Kind = ContractBudgetKind.Range, Basis = ContractBudgetBasis.FixedProject, Minimum = 8000, Maximum = 15000, Currency = "BRL" },
+                    RequiredSkills = ["Flutter", "Dart"]
+                },
+                new CreateManualOpportunityRequest
+                {
+                    Marketplace = ContractMarketplace.Upwork,
+                    Title = "Exemplo: API REST Python",
+                    Description = "Build a REST API with FastAPI",
+                    Budget = new BudgetInput { Kind = ContractBudgetKind.Exact, Basis = ContractBudgetBasis.FixedProject, Amount = 2000, Currency = "USD" },
+                    RequiredSkills = ["Python", "FastAPI"]
+                }
+            ]
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private async Task ImportJson()
+    {
+        _saving = true;
+        _error = null;
+        _result = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = System.Text.Json.JsonSerializer.Deserialize<ImportOpportunitiesRequest>(_jsonInput,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (request is null || request.Items.Count == 0)
+            {
+                _error = "JSON inválido ou vazio. O campo 'items' deve conter pelo menos uma oportunidade.";
+                _saving = false;
+                StateHasChanged();
+                return;
+            }
+
+            _result = await Api.ImportOpportunitiesAsync(request);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _error = $"JSON inválido: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Erro ao importar: {ex.Message}";
+        }
+
+        _saving = false;
+        StateHasChanged();
+    }
+
+    private void Reset()
+    {
+        _result = null;
+        _error = null;
+        _jsonInput = "";
+    }
+}

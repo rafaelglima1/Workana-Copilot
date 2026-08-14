@@ -35,6 +35,30 @@ public static class OpportunityEndpoints
         .Produces<OpportunityResponse>((int)HttpStatusCode.Created)
         .ProducesProblem((int)HttpStatusCode.BadRequest);
 
+        app.MapPost("/api/opportunities/import", async (
+            [FromBody] ImportOpportunitiesRequest request,
+            [FromServices] ImportOpportunitiesHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await handler.HandleAsync(request, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (DomainException ex)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Status = (int)HttpStatusCode.BadRequest,
+                    Title = "Invalid input",
+                    Detail = ex.Message
+                });
+            }
+        })
+        .WithName("ImportOpportunities")
+        .Produces<ImportOpportunitiesResponse>((int)HttpStatusCode.OK)
+        .ProducesProblem((int)HttpStatusCode.BadRequest);
+
         app.MapGet("/api/opportunities/{id:guid}", async (
             Guid id,
             [FromServices] GetOpportunityByIdHandler handler,
