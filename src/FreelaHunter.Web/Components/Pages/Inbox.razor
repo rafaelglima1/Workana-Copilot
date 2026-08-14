@@ -15,6 +15,13 @@
         <option value="Ignored">Ignorado</option>
         <option value="Archived">Arquivado</option>
     </select>
+    <select class="form-select" @bind="_recommendationFilter" @bind:after="OnFilterChanged">
+        <option value="">Todas recomendações</option>
+        <option value="Prioritize">Priorizar</option>
+        <option value="Apply">Aplicar</option>
+        <option value="ConsiderWithCaution">Considerar</option>
+        <option value="Skip">Pular</option>
+    </select>
     <select class="form-select" @bind="_sort" @bind:after="OnFilterChanged">
         <option value="CapturedAtDesc">Mais recentes</option>
         <option value="CapturedAtAsc">Mais antigos</option>
@@ -22,6 +29,7 @@
         <option value="OverallDesc">Maior score</option>
         <option value="OverallAsc">Menor score</option>
     </select>
+    <a href="/api/opportunities/export?format=csv" class="btn btn-outline-success" target="_blank">📥 Exportar CSV</a>
 </div>
 
 @if (_loading)
@@ -147,6 +155,7 @@ else
     private bool _loading = true;
     private string _search = "";
     private string _statusFilter = "";
+    private string _recommendationFilter = "";
     private string _sort = "CapturedAtDesc";
     private int _page = 1;
     private int _pageSize = 25;
@@ -170,7 +179,8 @@ else
                 pageSize: _pageSize,
                 search: string.IsNullOrEmpty(_search) ? null : _search,
                 status: string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter,
-                sort: _sort);
+                sort: _sort,
+                recommendation: string.IsNullOrEmpty(_recommendationFilter) ? null : _recommendationFilter);
 
             if (result is not null)
             {

@@ -19,6 +19,7 @@ public sealed class FreelaHunterApiClient
         string? search = null,
         string? status = null,
         string? sort = null,
+        string? recommendation = null,
         CancellationToken cancellationToken = default)
     {
         var query = $"?page={page}&pageSize={pageSize}";
@@ -31,6 +32,9 @@ public sealed class FreelaHunterApiClient
 
         if (!string.IsNullOrEmpty(sort))
             query += $"&sort={sort}";
+
+        if (!string.IsNullOrEmpty(recommendation))
+            query += $"&recommendation={recommendation}";
 
         return await _httpClient.GetFromJsonAsync<PagedOpportunityResponse>(
             $"/api/opportunities{query}", cancellationToken);
@@ -123,4 +127,32 @@ public sealed class FreelaHunterApiClient
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ImportOpportunitiesResponse>(cancellationToken);
     }
+
+    public async Task<PagedOpportunityResponse?> SearchOpportunitiesAsync(
+        OpportunitySearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var query = $"?page={request.Page}&pageSize={request.PageSize}";
+
+        if (!string.IsNullOrEmpty(request.Search))
+            query += $"&search={Uri.EscapeDataString(request.Search)}";
+
+        if (!string.IsNullOrEmpty(request.Recommendation))
+            query += $"&recommendation={request.Recommendation}";
+
+        if (!string.IsNullOrEmpty(request.Sort))
+            query += $"&sort={request.Sort}";
+
+        return await _httpClient.GetFromJsonAsync<PagedOpportunityResponse>(
+            $"/api/opportunities{query}", cancellationToken);
+    }
+}
+
+public sealed class OpportunitySearchRequest
+{
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 25;
+    public string? Search { get; init; }
+    public string? Recommendation { get; init; }
+    public string? Sort { get; init; }
 }

@@ -59,6 +59,37 @@ public static class OpportunityEndpoints
         .Produces<ImportOpportunitiesResponse>((int)HttpStatusCode.OK)
         .ProducesProblem((int)HttpStatusCode.BadRequest);
 
+        app.MapGet("/api/opportunities/export", async (
+            [FromServices] IOpportunityQueryRepository repository,
+            [FromQuery] string? format,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await repository.SearchAsync(
+                new OpportunityQueryCriteria { PageSize = 1000 },
+                cancellationToken);
+
+            if (format?.ToLowerInvariant() == "csv")
+            {
+                var csv = new System.Text.StringBuilder();
+                csv.AppendLine("Title,Marketplace,Status,Score,Recommendation,Budget,CapturedAt,ExternalReference");
+                foreach (var opp in result.Items)
+                {
+                    var budget = opp.BudgetKind == "Unknown" ? "" : $"{opp.BudgetCurrency} {opp.BudgetAmount ?? opp.BudgetMinimum}";
+                    var score = opp.LatestEvaluation?.OverallScore ?? 0;
+                    var recommendation = opp.LatestEvaluation?.Recommendation ?? "";
+                    csv.AppendLine($"\"{EscapeCsv(opp.Title)}\",{opp.Marketplace},{opp.Status},{score:F1},{recommendation},\"{EscapeCsv(budget)}\",{opp.CapturedAt:yyyy-MM-dd},\"{opp.ExternalReference ?? ""}\"");
+                }
+                return Results.File(
+                    System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
+                    "text/csv",
+                    "opportunities.csv");
+            }
+
+            return Results.Ok(result);
+        })
+        .WithName("ExportOpportunities")
+        .Produces((int)HttpStatusCode.OK);
+
         app.MapGet("/api/opportunities/{id:guid}", async (
             Guid id,
             [FromServices] GetOpportunityByIdHandler handler,
@@ -316,5 +347,10 @@ public static class OpportunityEndpoints
             WeightedContribution = component.WeightedContribution,
             Rules = component.Rules.Select(r => r.ToString()).ToList()
         };
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        return value.Replace("\"", "\"\"");
     }
 }
