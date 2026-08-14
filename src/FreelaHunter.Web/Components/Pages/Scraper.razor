@@ -1,0 +1,222 @@
+@page "/scraper"
+@inject FreelaHunterApiClient Api
+@rendermode InteractiveServer
+
+<PageTitle>Scraper - FreelaHunter</PageTitle>
+
+<h1 class="page-title">🕷️ Scraper Workana</h1>
+
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-primary btn-lg" @onclick="RunScraper" disabled="@_running">
+                        @if (_running)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            @("Executando...")
+                        }
+                        else
+                        {
+                            <span>🕷️ Executar Agora</span>
+                        }
+                    </button>
+
+                    @if (_result is not null)
+                    {
+                        <div class="alert alert-success mb-0 flex-grow-1">
+                            ✅ <strong>@_result.Imported</strong> nova(s),
+                            <strong>@_result.Skipped</strong> ignorada(s) de
+                            <strong>@_result.Total</strong> encontrada(s).
+                        </div>
+                    }
+                    else if (_error is not null)
+                    {
+                        <div class="alert alert-danger mb-0 flex-grow-1">@_error</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>📋 Configuração Atual</span>
+                <a href="/profile" class="btn btn-sm btn-outline-secondary">✏️ Editar</a>
+            </div>
+            <div class="card-body">
+                @if (_loadingSettings)
+                {
+                    <div class="text-center py-2">
+                        <div class="spinner-border spinner-border-sm text-secondary"></div>
+                    </div>
+                }
+                else if (_settings is not null)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <small class="text-muted">Tecnologia</small>
+                            <div>@(_settings.Scraper?.Technology ?? "Não configurada")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Max Páginas</small>
+                            <div>@(_settings.Scraper?.MaxPages ?? 0)</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Intervalo</small>
+                            <div>@(_settings.Scraper?.ScrapeIntervalMinutes ?? 0) min</div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Login</small>
+                            <div>@(_settings.Scraper?.LoginEnabled == true ? $"Sim ({_settings.Scraper?.Email})" : "Não")</div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">URL Base</small>
+                            <div class="text-truncate">@(_settings.Scraper?.BaseUrl)</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Não foi possível carregar as configurações.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>📥 Últimas Oportunidades Importadas</span>
+                <a href="/inbox" class="btn btn-sm btn-outline-primary">Ver todas →</a>
+            </div>
+            <div class="card-body">
+                @if (_loadingOpportunities)
+                {
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-secondary"></div>
+                    </div>
+                }
+                else if (_recentOpportunities.Count == 0)
+                {
+                    <p class="text-muted mb-0">Nenhuma oportunidade importada ainda.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Skills</th>
+                                    <th>Capturado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var opp in _recentOpportunities)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/opportunities/@opp.Id">@opp.Title</a>
+                                        </td>
+                                        <td>
+                                            @foreach (var skill in opp.RequiredSkills.Take(3))
+                                            {
+                                                <span class="skill-tag">@skill</span>
+                                            }
+                                        </td>
+                                        <td><small class="text-muted">@opp.CapturedAt.ToString("dd/MM HH:mm")</small></td>
+                                        <td>
+                                            <a href="/opportunities/@opp.Id" class="btn btn-sm btn-outline-secondary">Ver</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">ℹ️ Sobre o Scraper</div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    O scraper coleta vagas do Workana automaticamente.
+                    Configurações de tecnologia, login e intervalo podem ser alteradas no
+                    <a href="/profile">Perfil</a>.
+                </p>
+                <p class="small text-muted mb-0">
+                    O scraper também roda automaticamente a cada
+                    <strong>@(_settings?.Scraper?.ScrapeIntervalMinutes ?? 60) minutos</strong>
+                    via Worker.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _running;
+    private bool _loadingSettings = true;
+    private bool _loadingOpportunities = true;
+    private ScraperRunResult? _result;
+    private string? _error;
+    private SettingsResponse? _settings;
+    private List<FreelaHunter.Contracts.Inbox.OpportunityInboxItemResponse> _recentOpportunities = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settingsTask = LoadSettings();
+        var opportunitiesTask = LoadRecentOpportunities();
+        await Task.WhenAll(settingsTask, opportunitiesTask);
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            _settings = await Api.GetSettingsAsync();
+        }
+        catch { }
+
+        _loadingSettings = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadRecentOpportunities()
+    {
+        try
+        {
+            var result = await Api.GetInboxAsync(page: 1, pageSize: 10, sort: "CapturedAtDesc");
+            if (result is not null)
+                _recentOpportunities = result.Items;
+        }
+        catch { }
+
+        _loadingOpportunities = false;
+        StateHasChanged();
+    }
+
+    private async Task RunScraper()
+    {
+        _running = true;
+        _result = null;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _result = await Api.RunScraperAsync();
+            await LoadRecentOpportunities();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Erro: {ex.Message}";
+        }
+
+        _running = false;
+        StateHasChanged();
+    }
+}

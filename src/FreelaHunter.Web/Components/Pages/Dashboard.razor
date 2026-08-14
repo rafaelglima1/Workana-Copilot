@@ -14,16 +14,16 @@
 }
 else
 {
-    <div class="row mb-4">
-        <div class="col-md-4">
+    <div class="row g-3 mb-4">
+        <div class="col">
             <div class="card text-center">
                 <div class="card-body">
                     <h2 class="text-primary">@_total</h2>
-                    <p class="text-muted mb-0">Total de Oportunidades</p>
+                    <p class="text-muted mb-0">Total</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col">
             <div class="card text-center">
                 <div class="card-body">
                     <h2 class="text-success">@_prioritize</h2>
@@ -31,7 +31,7 @@ else
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col">
             <div class="card text-center">
                 <div class="card-body">
                     <h2 class="text-info">@_apply</h2>
@@ -39,40 +39,214 @@ else
                 </div>
             </div>
         </div>
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="text-warning">@_consider</h2>
+                    <p class="text-muted mb-0">Considerar</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="text-danger">@_skip</h2>
+                    <p class="text-muted mb-0">Pular</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="mb-3">
-        <a href="/inbox" class="btn btn-primary">📥 Ver Inbox</a>
-        <a href="/import" class="btn btn-outline-secondary">📥 Importar</a>
-        <a href="/opportunities/create" class="btn btn-outline-secondary">➕ Criar</a>
-        <a href="/profile" class="btn btn-outline-secondary">👤 Perfil</a>
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>🕷️ Último Scraper</span>
+                    <a href="/scraper" class="btn btn-sm btn-outline-primary">Ver Scraper →</a>
+                </div>
+                <div class="card-body">
+                    @if (_lastScrapeTime is not null)
+                    {
+                        <p class="mb-2">
+                            <small class="text-muted">Último scrape: @_lastScrapeTime.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="mb-2"><small class="text-muted">Nenhum scrape registrado ainda.</small></p>
+                    }
+                    <button class="btn btn-primary btn-sm" @onclick="RunScraper" disabled="@_running">
+                        @if (_running)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            @("Executando...")
+                        }
+                        else
+                        {
+                            <span>🕷️ Executar Agora</span>
+                        }
+                    </button>
+                    @if (_scrapeResult is not null)
+                    {
+                        <span class="ms-2 text-muted">
+                            @_scrapeResult.Imported novas, @_scrapeResult.Skipped ignoradas
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">📥 Últimas Oportunidades</div>
+                <div class="card-body">
+                    @if (_recentItems.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Nenhuma oportunidade encontrada.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Título</th>
+                                        <th>Marketplace</th>
+                                        <th>Recomendação</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in _recentItems)
+                                    {
+                                        <tr>
+                                            <td><a href="/opportunities/@item.Id">@item.Title</a></td>
+                                            <td>@item.Marketplace</td>
+                                            <td>
+                                                @if (item.LatestEvaluation is not null)
+                                                {
+                                                    <span class="badge @GetRecBadge(item.LatestEvaluation.Recommendation)">
+                                                        @item.LatestEvaluation.Recommendation
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td><small class="text-muted">@item.CapturedAt.ToString("dd/MM HH:mm")</small></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">⚡ Ações Rápidas</div>
+                <div class="card-body d-flex flex-column gap-2">
+                    <a href="/inbox" class="btn btn-outline-primary">📥 Ver Inbox</a>
+                    <a href="/scraper" class="btn btn-outline-primary">🕷️ Scraper</a>
+                    <a href="/opportunities/create" class="btn btn-outline-secondary">➕ Criar Oportunidade</a>
+                    <a href="/import" class="btn btn-outline-secondary">📥 Importar JSON</a>
+                    <a href="/profile" class="btn btn-outline-secondary">👤 Meu Perfil</a>
+                </div>
+            </div>
+        </div>
     </div>
 }
 
 @code {
     private bool _loading = true;
+    private bool _running;
     private int _total;
     private int _prioritize;
     private int _apply;
+    private int _consider;
+    private int _skip;
+    private DateTimeOffset? _lastScrapeTime;
+    private ScraperRunResult? _scrapeResult;
+    private List<FreelaHunter.Contracts.Inbox.OpportunityInboxItemResponse> _recentItems = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var result = await Api.GetInboxAsync(pageSize: 1);
-            _total = result?.TotalCount ?? 0;
-
-            var priorize = await Api.GetInboxAsync(pageSize: 1, recommendation: "Prioritize");
-            _prioritize = priorize?.TotalCount ?? 0;
-
-            var applyResult = await Api.GetInboxAsync(pageSize: 1, recommendation: "Apply");
-            _apply = applyResult?.TotalCount ?? 0;
+            var tasks = new[]
+            {
+                LoadStats(),
+                LoadRecentOpportunities()
+            };
+            await Task.WhenAll(tasks);
         }
-        catch
-        {
-            _total = 0;
-        }
+        catch { }
 
         _loading = false;
     }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var total = await Api.GetInboxAsync(pageSize: 1);
+            _total = total?.TotalCount ?? 0;
+
+            var prioritize = await Api.GetInboxAsync(pageSize: 1, recommendation: "Prioritize");
+            _prioritize = prioritize?.TotalCount ?? 0;
+
+            var apply = await Api.GetInboxAsync(pageSize: 1, recommendation: "Apply");
+            _apply = apply?.TotalCount ?? 0;
+
+            var consider = await Api.GetInboxAsync(pageSize: 1, recommendation: "ConsiderWithCaution");
+            _consider = consider?.TotalCount ?? 0;
+
+            var skip = await Api.GetInboxAsync(pageSize: 1, recommendation: "Skip");
+            _skip = skip?.TotalCount ?? 0;
+        }
+        catch { }
+    }
+
+    private async Task LoadRecentOpportunities()
+    {
+        try
+        {
+            var result = await Api.GetInboxAsync(page: 1, pageSize: 5, sort: "CapturedAtDesc");
+            if (result is not null)
+            {
+                _recentItems = result.Items;
+                if (_recentItems.Count > 0)
+                    _lastScrapeTime = _recentItems.Max(i => i.CapturedAt);
+            }
+        }
+        catch { }
+    }
+
+    private async Task RunScraper()
+    {
+        _running = true;
+        _scrapeResult = null;
+        StateHasChanged();
+
+        try
+        {
+            _scrapeResult = await Api.RunScraperAsync();
+            _lastScrapeTime = DateTimeOffset.Now;
+            await LoadRecentOpportunities();
+        }
+        catch { }
+
+        _running = false;
+        StateHasChanged();
+    }
+
+    private static string GetRecBadge(string recommendation) => recommendation switch
+    {
+        "Prioritize" => "badge-go",
+        "Apply" => "badge-go",
+        "ConsiderWithCaution" => "badge-maybe",
+        "Skip" => "badge-nogo",
+        _ => ""
+    };
 }
