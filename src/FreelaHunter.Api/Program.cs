@@ -8,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -18,6 +20,20 @@ using (var scope = app.Services.CreateScope())
 
 app.MapGet("/health", () => Results.Ok("Healthy"))
    .WithName("HealthCheck");
+
+app.MapHealthChecks("/health/ready").WithName("HealthCheckReady");
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
 
 app.MapOpportunityEndpoints();
 app.MapOpportunityInboxEndpoints();

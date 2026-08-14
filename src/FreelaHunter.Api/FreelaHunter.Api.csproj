@@ -13,4 +13,8 @@
     <ProjectReference Include="..\FreelaHunter.Infrastructure\FreelaHunter.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
+  </ItemGroup>
+
 </Project>
