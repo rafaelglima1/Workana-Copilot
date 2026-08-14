@@ -57,7 +57,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                 {
                     await page.GotoAsync(url, new PageGotoOptions
                     {
-                        WaitUntil = WaitUntilState.NetworkIdle,
+                        WaitUntil = WaitUntilState.Load,
                         Timeout = 45000
                     });
 
@@ -124,7 +124,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
         {
             await page.GotoAsync("https://www.workana.com/login", new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.Load,
                 Timeout = 30000
             });
 
@@ -174,7 +174,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                 _logger.LogDebug("Visiting detail: {Url}", opp.ExternalUrl);
                 await page.GotoAsync(opp.ExternalUrl!, new PageGotoOptions
                 {
-                    WaitUntil = WaitUntilState.NetworkIdle,
+                    WaitUntil = WaitUntilState.Load,
                     Timeout = 30000
                 });
 
