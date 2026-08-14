@@ -49,10 +49,16 @@ public sealed class TelegramNotifier : ITelegramNotifier
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(_options.ChatId))
+            {
+                _logger.LogDebug("Telegram ChatId not configured, skipping message.");
+                return;
+            }
+
             _client ??= new TelegramBotClient(_options.BotToken);
 
             await _client.SendMessage(
-                chatId: _options.ChatId,
+                chatId: long.Parse(_options.ChatId),
                 text: message,
                 parseMode: ParseMode.Html,
                 cancellationToken: cancellationToken);
