@@ -59,43 +59,43 @@ public static class SettingsEndpoints
                 return Results.StatusCode(500);
 
             var json = await File.ReadAllTextAsync(settingsPath);
-            var settings = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json)
-                ?? new Dictionary<string, object>();
+            var settings = System.Text.Json.Nodes.JsonNode.Parse(json) as System.Text.Json.Nodes.JsonObject
+                ?? new System.Text.Json.Nodes.JsonObject();
 
             if (request.Llm is not null)
             {
-                UpdateNestedSetting(settings, "MiMo", "BaseUrl", request.Llm.Provider);
-                UpdateNestedSetting(settings, "MiMo", "Model", request.Llm.Model);
+                SetNestedValue(settings, "MiMo", "BaseUrl", request.Llm.Provider);
+                SetNestedValue(settings, "MiMo", "Model", request.Llm.Model);
                 if (!string.IsNullOrWhiteSpace(request.Llm.ApiKey))
-                    UpdateNestedSetting(settings, "MiMo", "ApiKey", request.Llm.ApiKey);
+                    SetNestedValue(settings, "MiMo", "ApiKey", request.Llm.ApiKey);
             }
 
             if (request.Telegram is not null)
             {
-                UpdateNestedSetting(settings, "Telegram", "BotToken", request.Telegram.BotToken);
-                UpdateNestedSetting(settings, "Telegram", "ChatId", request.Telegram.ChatId);
+                SetNestedValue(settings, "Telegram", "BotToken", request.Telegram.BotToken);
+                SetNestedSetting(settings, "Telegram", "ChatId", request.Telegram.ChatId);
                 if (request.Telegram.Enabled.HasValue)
-                    UpdateNestedSetting(settings, "Telegram", "Enabled", request.Telegram.Enabled.Value.ToString().ToLower());
+                    SetNestedValue(settings, "Telegram", "Enabled", request.Telegram.Enabled.Value.ToString().ToLower());
             }
 
             if (request.Scraper is not null)
             {
-                UpdateNestedSetting(settings, "WorkanaScraper", "BaseUrl", request.Scraper.BaseUrl);
-                UpdateNestedSetting(settings, "WorkanaScraper", "Language", request.Scraper.Language);
-                UpdateNestedSetting(settings, "WorkanaScraper", "Skills", request.Scraper.Skills);
-                UpdateNestedSetting(settings, "WorkanaScraper", "Technology", request.Scraper.Technology);
+                SetNestedValue(settings, "WorkanaScraper", "BaseUrl", request.Scraper.BaseUrl);
+                SetNestedValue(settings, "WorkanaScraper", "Language", request.Scraper.Language);
+                SetNestedValue(settings, "WorkanaScraper", "Skills", request.Scraper.Skills);
+                SetNestedValue(settings, "WorkanaScraper", "Technology", request.Scraper.Technology);
                 if (request.Scraper.MaxPages.HasValue)
-                    UpdateNestedSetting(settings, "WorkanaScraper", "MaxPages", request.Scraper.MaxPages.Value.ToString());
+                    SetNestedValue(settings, "WorkanaScraper", "MaxPages", request.Scraper.MaxPages.Value.ToString());
                 if (request.Scraper.LoginEnabled.HasValue)
-                    UpdateNestedSetting(settings, "WorkanaScraper", "LoginEnabled", request.Scraper.LoginEnabled.Value.ToString().ToLower());
-                UpdateNestedSetting(settings, "WorkanaScraper", "Email", request.Scraper.Email);
+                    SetNestedValue(settings, "WorkanaScraper", "LoginEnabled", request.Scraper.LoginEnabled.Value.ToString().ToLower());
+                SetNestedValue(settings, "WorkanaScraper", "Email", request.Scraper.Email);
                 if (!string.IsNullOrWhiteSpace(request.Scraper.Password))
-                    UpdateNestedSetting(settings, "WorkanaScraper", "Password", request.Scraper.Password);
+                    SetNestedValue(settings, "WorkanaScraper", "Password", request.Scraper.Password);
                 if (request.Scraper.ScrapeIntervalMinutes.HasValue)
-                    UpdateNestedSetting(settings, "Worker", "ScrapeIntervalMinutes", request.Scraper.ScrapeIntervalMinutes.Value.ToString());
+                    SetNestedValue(settings, "Worker", "ScrapeIntervalMinutes", request.Scraper.ScrapeIntervalMinutes.Value.ToString());
             }
 
-            var updatedJson = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions
+            var updatedJson = settings.ToJsonString(new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = true
             });
@@ -114,67 +114,92 @@ public static class SettingsEndpoints
             [FromServices] IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            var maxPages = configuration.GetValue<int>("WorkanaScraper:MaxPages");
-            if (maxPages <= 0) maxPages = 1;
-
-            var scraped = await scraper.ScrapeAsync(maxPages, cancellationToken);
-            var imported = 0;
-            var skipped = 0;
-
-            foreach (var item in scraped)
+            try
             {
-                if (string.IsNullOrWhiteSpace(item.ExternalUrl))
+                var maxPages = configuration.GetValue<int>("WorkanaScraper:MaxPages");
+                if (maxPages <= 0) maxPages = 1;
+
+                var scraped = await scraper.ScrapeAsync(maxPages, cancellationToken);
+                var imported = 0;
+                var skipped = 0;
+
+                foreach (var item in scraped)
                 {
-                    skipped++;
-                    continue;
+                    if (string.IsNullOrWhiteSpace(item.ExternalUrl))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var existing = await repository.GetByExternalReferenceAsync(item.ExternalUrl, cancellationToken);
+                    if (existing is not null)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var request = new Contracts.Opportunities.CreateManualOpportunityRequest
+                    {
+                        Marketplace = Contracts.Opportunities.ContractMarketplace.Workana,
+                        Title = item.Title,
+                        Description = item.Description,
+                        RequiredSkills = item.RequiredSkills,
+                        ExternalReference = item.ExternalUrl,
+                        PublishedAt = item.PublishedAt
+                    };
+
+                    await createHandler.HandleAsync(request, cancellationToken);
+                    imported++;
                 }
 
-                var existing = await repository.GetByExternalReferenceAsync(item.ExternalUrl, cancellationToken);
-                if (existing is not null)
-                {
-                    skipped++;
-                    continue;
-                }
+                await notifier.SendMessageAsync(
+                    $"\ud83d\udce5 <b>Scrape manual completo</b>\n\n" +
+                    $"<b>{imported}</b> nova(s) oportunidade(s).\n" +
+                    $"<b>{skipped}</b> ignorada(s).",
+                    cancellationToken);
 
-                var request = new Contracts.Opportunities.CreateManualOpportunityRequest
-                {
-                    Marketplace = Contracts.Opportunities.ContractMarketplace.Workana,
-                    Title = item.Title,
-                    Description = item.Description,
-                    RequiredSkills = item.RequiredSkills,
-                    ExternalReference = item.ExternalUrl,
-                    PublishedAt = item.PublishedAt
-                };
-
-                await createHandler.HandleAsync(request, cancellationToken);
-                imported++;
+                return Results.Ok(new { imported, skipped, total = scraped.Count });
             }
-
-            await notifier.SendMessageAsync(
-                $"📥 <b>Scrape manual completo</b>\n\n" +
-                $"<b>{imported}</b> nova(s) oportunidade(s).\n" +
-                $"<b>{skipped}</b> ignorada(s).",
-                cancellationToken);
-
-            return Results.Ok(new { imported, skipped, total = scraped.Count });
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    detail: ex.Message,
+                    title: "Scraper error",
+                    statusCode: 500);
+            }
         })
         .WithName("RunScraper")
         .Produces<object>();
     }
 
-    private static void UpdateNestedSetting(
-        Dictionary<string, object> settings,
+    private static void SetNestedValue(
+        System.Text.Json.Nodes.JsonObject root,
         string section,
         string key,
         string? value)
     {
         if (value is null) return;
-        if (!settings.ContainsKey(section) || settings[section] is not Dictionary<string, object> nested)
+
+        if (!root.ContainsKey(section) || root[section] is not System.Text.Json.Nodes.JsonObject nested)
         {
-            nested = new Dictionary<string, object>();
-            settings[section] = nested;
+            nested = new System.Text.Json.Nodes.JsonObject();
+            root[section] = nested;
         }
         nested[key] = value;
+    }
+
+    private static void SetNestedSetting(
+        System.Text.Json.Nodes.JsonObject root,
+        string section,
+        string key,
+        string? value)
+    {
+        if (!root.ContainsKey(section) || root[section] is not System.Text.Json.Nodes.JsonObject nested)
+        {
+            nested = new System.Text.Json.Nodes.JsonObject();
+            root[section] = nested;
+        }
+        nested[key] = value ?? "";
     }
 
     private static string FindSettingsFile(IConfiguration configuration)
