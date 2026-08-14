@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "5092:5092"
+    environment:
+      - ConnectionStrings__FreelaHunter=Data Source=/data/freelahunter.db
+    volumes:
+      - db-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5092/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - ConnectionStrings__FreelaHunter=Data Source=/data/freelahunter.db
+      - Worker__IntervalSeconds=300
+      - Worker__BatchSize=10
+    volumes:
+      - db-data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "5270:5270"
+    environment:
+      - ApiUrl=http://api:5092
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:

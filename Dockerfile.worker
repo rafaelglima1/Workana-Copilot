@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY src/FreelaHunter.Domain/FreelaHunter.Domain.csproj src/FreelaHunter.Domain/
+COPY src/FreelaHunter.Contracts/FreelaHunter.Contracts.csproj src/FreelaHunter.Contracts/
+COPY src/FreelaHunter.Application/FreelaHunter.Application.csproj src/FreelaHunter.Application/
+COPY src/FreelaHunter.Infrastructure/FreelaHunter.Infrastructure.csproj src/FreelaHunter.Infrastructure/
+COPY src/FreelaHunter.Worker/FreelaHunter.Worker.csproj src/FreelaHunter.Worker/
+RUN dotnet restore src/FreelaHunter.Worker/FreelaHunter.Worker.csproj
+
+COPY src/ src/
+RUN dotnet publish src/FreelaHunter.Worker/FreelaHunter.Worker.csproj -c Release -o /app/worker --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY --from=build /app/worker .
+ENTRYPOINT ["dotnet", "FreelaHunter.Worker.dll"]

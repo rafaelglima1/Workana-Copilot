@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FreelaHunter.Application;
 using FreelaHunter.Application.Exceptions;
+using FreelaHunter.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -207,13 +208,18 @@ public class MiMoOpportunityIntelligenceGatewayTests
     }
 
     [Fact]
-    public async Task AnalyzeAsync_InvalidApiKey_ThrowsConfigurationError()
+    public async Task AnalyzeAsync_EmptyApiKey_ReturnsFallbackAnalysis()
     {
         var handler = FakeHttpMessageHandler.ReturningAnalysisJson(ValidAnalysisJson);
         var gateway = CreateGateway(handler, CreateOptions(apiKey: ""));
 
-        await Assert.ThrowsAsync<OpportunityIntelligenceUnavailableException>(
-            () => gateway.AnalyzeAsync(CreateInput(), CancellationToken.None));
+        var result = await gateway.AnalyzeAsync(CreateInput(), CancellationToken.None);
+
+        Assert.Equal(AnalysisConfidence.Low, result.Confidence);
+        Assert.Equal(DeliveryRiskLevel.Moderate, result.DeliveryRisk);
+        Assert.Equal(AiLeverageLevel.Medium, result.AiLeverage);
+        Assert.Equal(40m, result.EstimatedHours);
+        Assert.Null(result.Usage);
     }
 
     [Fact]

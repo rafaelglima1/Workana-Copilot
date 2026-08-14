@@ -35,8 +35,12 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            throw new OpportunityIntelligenceUnavailableException(
-                "MiMo API key is not configured. Set MiMo:ApiKey via environment variable or configuration.");
+        {
+            _logger.LogWarning(
+                "MiMo API key not configured. Returning fallback analysis for '{Title}'.",
+                input.Title);
+            return CreateFallbackAnalysis(input);
+        }
 
         var systemPrompt = BuildSystemPrompt();
         var userPrompt = BuildUserPrompt(input);
@@ -390,5 +394,28 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
         _logger.LogInformation(
             "MiMo usage input={InputTokens} output={OutputTokens} total={TotalTokens}",
             usage.PromptTokens, usage.CompletionTokens, usage.TotalTokens);
+    }
+
+    private static OpportunitySemanticAnalysis CreateFallbackAnalysis(OpportunityIntelligenceInput input)
+    {
+        var skills = input.RequiredSkills.Count > 0
+            ? input.RequiredSkills.Take(5).ToList()
+            : ["General"];
+
+        var riskFactors = new List<string> { "LLM analysis unavailable - manual review required" };
+        var aiLeverageReasons = new List<string> { "Default estimate - no LLM configured" };
+
+        return new OpportunitySemanticAnalysis
+        {
+            EstimatedHours = 40m,
+            DeliveryRisk = DeliveryRiskLevel.Moderate,
+            AiLeverage = AiLeverageLevel.Medium,
+            Confidence = AnalysisConfidence.Low,
+            TechnicalRequirements = skills.AsReadOnly(),
+            RiskFactors = riskFactors.AsReadOnly(),
+            AiLeverageReasons = aiLeverageReasons.AsReadOnly(),
+            ClarifyingQuestions = [],
+            Usage = null
+        };
     }
 }
