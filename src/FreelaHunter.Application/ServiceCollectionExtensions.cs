@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ArchiveOpportunityHandler>();
         services.AddScoped<GenerateProposalStrategyHandler>();
         services.AddScoped<OpportunityBackgroundProcessor>();
+        services.AddScoped<ImportOpportunitiesHandler>();
         return services;
     }
 }

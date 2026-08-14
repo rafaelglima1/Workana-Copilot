@@ -114,4 +114,13 @@ public sealed class FreelaHunterApiClient
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<FreelancerProfileResponse>(cancellationToken);
     }
+
+    public async Task<ImportOpportunitiesResponse?> ImportOpportunitiesAsync(
+        ImportOpportunitiesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/opportunities/import", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ImportOpportunitiesResponse>(cancellationToken);
+    }
 }
