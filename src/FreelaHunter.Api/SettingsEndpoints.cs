@@ -30,6 +30,8 @@ public static class SettingsEndpoints
             var scraper = new ScraperSettingsResponse
             {
                 BaseUrl = configuration["WorkanaScraper:BaseUrl"] ?? "https://www.workana.com/jobs",
+                Language = configuration["WorkanaScraper:Language"] ?? "pt",
+                Skills = configuration["WorkanaScraper:Skills"] ?? "",
                 Technology = configuration["WorkanaScraper:Technology"] ?? "",
                 MaxPages = configuration.GetValue<int>("WorkanaScraper:MaxPages"),
                 LoginEnabled = configuration.GetValue<bool>("WorkanaScraper:LoginEnabled"),
@@ -79,12 +81,16 @@ public static class SettingsEndpoints
             if (request.Scraper is not null)
             {
                 UpdateNestedSetting(settings, "WorkanaScraper", "BaseUrl", request.Scraper.BaseUrl);
+                UpdateNestedSetting(settings, "WorkanaScraper", "Language", request.Scraper.Language);
+                UpdateNestedSetting(settings, "WorkanaScraper", "Skills", request.Scraper.Skills);
                 UpdateNestedSetting(settings, "WorkanaScraper", "Technology", request.Scraper.Technology);
                 if (request.Scraper.MaxPages.HasValue)
                     UpdateNestedSetting(settings, "WorkanaScraper", "MaxPages", request.Scraper.MaxPages.Value.ToString());
                 if (request.Scraper.LoginEnabled.HasValue)
                     UpdateNestedSetting(settings, "WorkanaScraper", "LoginEnabled", request.Scraper.LoginEnabled.Value.ToString().ToLower());
                 UpdateNestedSetting(settings, "WorkanaScraper", "Email", request.Scraper.Email);
+                if (!string.IsNullOrWhiteSpace(request.Scraper.Password))
+                    UpdateNestedSetting(settings, "WorkanaScraper", "Password", request.Scraper.Password);
                 if (request.Scraper.ScrapeIntervalMinutes.HasValue)
                     UpdateNestedSetting(settings, "Worker", "ScrapeIntervalMinutes", request.Scraper.ScrapeIntervalMinutes.Value.ToString());
             }
@@ -243,6 +249,8 @@ public sealed class TelegramSettingsResponse
 public sealed class ScraperSettingsResponse
 {
     public string BaseUrl { get; set; } = "";
+    public string Language { get; set; } = "pt";
+    public string Skills { get; set; } = "";
     public string Technology { get; set; } = "";
     public int MaxPages { get; set; }
     public bool LoginEnabled { get; set; }
@@ -274,9 +282,12 @@ public sealed class TelegramUpdateRequest
 public sealed class ScraperUpdateRequest
 {
     public string? BaseUrl { get; set; }
+    public string? Language { get; set; }
+    public string? Skills { get; set; }
     public string? Technology { get; set; }
     public int? MaxPages { get; set; }
     public bool? LoginEnabled { get; set; }
     public string? Email { get; set; }
+    public string? Password { get; set; }
     public int? ScrapeIntervalMinutes { get; set; }
 }

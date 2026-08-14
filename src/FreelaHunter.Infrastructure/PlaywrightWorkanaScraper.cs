@@ -297,10 +297,20 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
     private string BuildPageUrl(int page)
     {
         var url = _options.BaseUrl;
-        if (!string.IsNullOrWhiteSpace(_options.Technology))
-            url += $"/{_options.Technology}";
+        var queryParts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(_options.Language))
+            queryParts.Add($"language={Uri.EscapeDataString(_options.Language)}");
+
+        if (!string.IsNullOrWhiteSpace(_options.Skills))
+            queryParts.Add($"skills={Uri.EscapeDataString(_options.Skills)}");
+
         if (page > 1)
-            url += $"?page={page}";
+            queryParts.Add($"page={page}");
+
+        if (queryParts.Count > 0)
+            url += "?" + string.Join("&", queryParts);
+
         return url;
     }
 

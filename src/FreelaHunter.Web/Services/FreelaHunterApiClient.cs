@@ -199,6 +199,8 @@ public sealed class TelegramSettingsResponse
 public sealed class ScraperSettingsResponse
 {
     public string BaseUrl { get; set; } = "";
+    public string Language { get; set; } = "pt";
+    public string Skills { get; set; } = "";
     public string Technology { get; set; } = "";
     public int MaxPages { get; set; }
     public bool LoginEnabled { get; set; }
@@ -229,11 +231,15 @@ public sealed class TelegramUpdateRequest
 
 public sealed class ScraperUpdateRequest
 {
+    public string? BaseUrl { get; set; }
+    public string? Language { get; set; }
+    public string? Skills { get; set; }
     public string? Technology { get; set; }
     public int? MaxPages { get; set; }
-    public int? ScrapeIntervalMinutes { get; set; }
     public bool? LoginEnabled { get; set; }
     public string? Email { get; set; }
+    public string? Password { get; set; }
+    public int? ScrapeIntervalMinutes { get; set; }
 }
 
 public sealed class ScraperRunResult
