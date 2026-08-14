@@ -53,36 +53,49 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                 var url = BuildPageUrl(pageNum);
                 _logger.LogInformation("Navigating to page {Page}: {Url}", pageNum, url);
 
-                await page.GotoAsync(url, new PageGotoOptions
+                try
                 {
-                    WaitUntil = WaitUntilState.NetworkIdle,
-                    Timeout = 30000
-                });
+                    await page.GotoAsync(url, new PageGotoOptions
+                    {
+                        WaitUntil = WaitUntilState.NetworkIdle,
+                        Timeout = 45000
+                    });
 
-                await page.WaitForTimeoutAsync(_options.PageDelayMs);
+                    await page.WaitForTimeoutAsync(_options.PageDelayMs);
 
-                var cards = await page.QuerySelectorAllAsync(".project-item, .job-item, [class*='project'], article[class*='card']");
+                    var cards = await page.QuerySelectorAllAsync(".project-item, .job-item, [class*='project'], article[class*='card']");
 
-                if (cards.Count == 0)
-                {
-                    _logger.LogWarning("No opportunity cards found on page {Page}", pageNum);
-                    cards = await page.QuerySelectorAllAsync("a[href*='/jobs/']");
+                    if (cards.Count == 0)
+                    {
+                        _logger.LogWarning("No opportunity cards found on page {Page}", pageNum);
+                        cards = await page.QuerySelectorAllAsync("a[href*='/jobs/']");
+                    }
+
+                    _logger.LogInformation("Found {Count} cards on page {Page}", cards.Count, pageNum);
+
+                    foreach (var card in cards)
+                    {
+                        try
+                        {
+                            var opportunity = await ParseCardAsync(card, cancellationToken);
+                            if (opportunity is not null)
+                                opportunities.Add(opportunity);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to parse card");
+                        }
+                    }
                 }
-
-                _logger.LogInformation("Found {Count} cards on page {Page}", cards.Count, pageNum);
-
-                foreach (var card in cards)
+                catch (TimeoutException ex)
                 {
-                    try
-                    {
-                        var opportunity = await ParseCardAsync(card, cancellationToken);
-                        if (opportunity is not null)
-                            opportunities.Add(opportunity);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to parse card");
-                    }
+                    _logger.LogWarning(ex, "Timeout on page {Page}, continuing with results so far", pageNum);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error on page {Page}, continuing with results so far", pageNum);
+                    break;
                 }
 
                 if (pageNum < maxPages)

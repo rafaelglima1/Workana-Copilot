@@ -51,14 +51,7 @@ public static class SettingsEndpoints
             [FromBody] UpdateSettingsRequest request,
             [FromServices] IConfiguration configuration) =>
         {
-            var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-            if (!File.Exists(settingsPath))
-            {
-                var configFile = configuration as IConfigurationRoot;
-                settingsPath = configFile?.Providers
-                    .OfType<Microsoft.Extensions.Configuration.FileConfigurationProvider>()
-                    .FirstOrDefault()?.Source?.Path ?? settingsPath;
-            }
+            var settingsPath = FindSettingsFile(configuration);
 
             if (!File.Exists(settingsPath))
                 return Results.StatusCode(500);
@@ -112,9 +105,13 @@ public static class SettingsEndpoints
             [FromServices] IOpportunityRepository repository,
             [FromServices] ITelegramNotifier notifier,
             [FromServices] CreateManualOpportunityHandler createHandler,
+            [FromServices] IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            var scraped = await scraper.ScrapeAsync(3, cancellationToken);
+            var maxPages = configuration.GetValue<int>("WorkanaScraper:MaxPages");
+            if (maxPages <= 0) maxPages = 1;
+
+            var scraped = await scraper.ScrapeAsync(maxPages, cancellationToken);
             var imported = 0;
             var skipped = 0;
 
@@ -172,6 +169,53 @@ public static class SettingsEndpoints
             settings[section] = nested;
         }
         nested[key] = value;
+    }
+
+    private static string FindSettingsFile(IConfiguration configuration)
+    {
+        // Try to find via IConfigurationRoot provider path first
+        if (configuration is IConfigurationRoot root)
+        {
+            var providerPath = root.Providers
+                .OfType<Microsoft.Extensions.Configuration.FileConfigurationProvider>()
+                .FirstOrDefault()?.Source?.Path;
+
+            if (!string.IsNullOrWhiteSpace(providerPath) && File.Exists(providerPath))
+                return providerPath;
+        }
+
+        // Walk up from BaseDirectory to find appsettings.json
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "appsettings.json");
+            if (File.Exists(candidate))
+                return candidate;
+            dir = dir.Parent;
+        }
+
+        // Fallback to project root relative to solution
+        var solutionDir = FindSolutionDirectory();
+        if (solutionDir is not null)
+        {
+            var apiDir = Path.Combine(solutionDir, "src", "FreelaHunter.Api", "appsettings.json");
+            if (File.Exists(apiDir))
+                return apiDir;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+    }
+
+    private static string? FindSolutionDirectory()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (dir.GetFiles("*.sln").Length > 0)
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        return null;
     }
 }
 
