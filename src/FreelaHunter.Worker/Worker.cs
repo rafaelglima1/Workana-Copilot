@@ -1,6 +1,5 @@
 using FreelaHunter.Application;
 using FreelaHunter.Contracts.Opportunities;
-using FreelaHunter.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -63,6 +62,7 @@ public sealed class Worker : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var processor = scope.ServiceProvider.GetRequiredService<OpportunityBackgroundProcessor>();
+
         var result = await processor.ProcessPendingAsync(_options.Value.BatchSize, cancellationToken);
 
         if (result.Evaluated > 0 || result.Failed > 0)
@@ -82,6 +82,7 @@ public sealed class Worker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var scraper = scope.ServiceProvider.GetRequiredService<IWorkanaScraper>();
         var repository = scope.ServiceProvider.GetRequiredService<IOpportunityRepository>();
+        var notifier = scope.ServiceProvider.GetRequiredService<ITelegramNotifier>();
 
         try
         {
@@ -135,8 +136,17 @@ public sealed class Worker : BackgroundService
             }
 
             _logger.LogInformation(
-                "Scrape cycle complete: {Imported} new, {Skipped} skipped (duplicates or no URL).",
+                "Scrape cycle complete: {Imported} new, {Skipped} skipped.",
                 imported, skipped);
+
+            if (imported > 0 && _options.Value.NotifyOnScrape)
+            {
+                await notifier.SendMessageAsync(
+                    $"📥 <b>Scrape Workana completo</b>\n\n" +
+                    $"<b>{imported}</b> nova(s) oportunidade(s) encontrada(s).\n" +
+                    $"<b>{skipped}</b> ignorada(s) (duplicatas ou sem URL).",
+                    cancellationToken);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

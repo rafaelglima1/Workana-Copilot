@@ -38,6 +38,11 @@ public static class ServiceCollectionExtensions
         services.Configure<WorkanaScraperOptions>(
             configuration.GetSection(WorkanaScraperOptions.SectionName));
 
+        services.Configure<TelegramOptions>(
+            configuration.GetSection(TelegramOptions.SectionName));
+
+        services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
+
         services.AddHttpClient<IOpportunityIntelligenceGateway, MiMoOpportunityIntelligenceGateway>(
             client =>
             {
