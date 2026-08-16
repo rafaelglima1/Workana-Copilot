@@ -202,6 +202,7 @@ public sealed class ScraperSettingsResponse
     public string Language { get; set; } = "pt";
     public string Skills { get; set; } = "";
     public string Technology { get; set; } = "";
+    public string Sort { get; set; } = "date";
     public int MaxPages { get; set; }
     public bool LoginEnabled { get; set; }
     public string Email { get; set; } = "";
@@ -235,6 +236,7 @@ public sealed class ScraperUpdateRequest
     public string? Language { get; set; }
     public string? Skills { get; set; }
     public string? Technology { get; set; }
+    public string? Sort { get; set; }
     public int? MaxPages { get; set; }
     public bool? LoginEnabled { get; set; }
     public string? Email { get; set; }

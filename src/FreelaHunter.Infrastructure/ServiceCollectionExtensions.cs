@@ -9,16 +9,7 @@ namespace FreelaHunter.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
-    {
-        services.AddSingleton<IOpportunityRepository, InMemoryOpportunityRepository>();
-        services.AddSingleton<IFreelancerProfileRepository, InMemoryFreelancerProfileRepository>();
-        return services;
-    }
-
-    public static IServiceCollection AddInfrastructureServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("FreelaHunter")
             ?? "Data Source=freelahunter.db";

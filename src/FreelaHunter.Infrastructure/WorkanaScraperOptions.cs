@@ -8,6 +8,7 @@ public sealed class WorkanaScraperOptions
     public string Language { get; init; } = "pt";
     public string Skills { get; init; } = "";
     public string Technology { get; init; } = "";
+    public string Sort { get; init; } = "date";
     public int MaxPages { get; init; } = 3;
     public int PageDelayMs { get; init; } = 2000;
     public bool Headless { get; init; } = true;

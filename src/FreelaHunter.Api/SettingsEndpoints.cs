@@ -33,6 +33,7 @@ public static class SettingsEndpoints
                 Language = configuration["WorkanaScraper:Language"] ?? "pt",
                 Skills = configuration["WorkanaScraper:Skills"] ?? "",
                 Technology = configuration["WorkanaScraper:Technology"] ?? "",
+                Sort = configuration["WorkanaScraper:Sort"] ?? "date",
                 MaxPages = configuration.GetValue<int>("WorkanaScraper:MaxPages"),
                 LoginEnabled = configuration.GetValue<bool>("WorkanaScraper:LoginEnabled"),
                 Email = configuration["WorkanaScraper:Email"] ?? "",
@@ -84,6 +85,8 @@ public static class SettingsEndpoints
                 SetNestedValue(settings, "WorkanaScraper", "Language", request.Scraper.Language);
                 SetNestedValue(settings, "WorkanaScraper", "Skills", request.Scraper.Skills);
                 SetNestedValue(settings, "WorkanaScraper", "Technology", request.Scraper.Technology);
+                if (!string.IsNullOrWhiteSpace(request.Scraper.Sort))
+                    SetNestedValue(settings, "WorkanaScraper", "Sort", request.Scraper.Sort);
                 if (request.Scraper.MaxPages.HasValue)
                     SetNestedValue(settings, "WorkanaScraper", "MaxPages", request.Scraper.MaxPages.Value.ToString());
                 if (request.Scraper.LoginEnabled.HasValue)
@@ -111,6 +114,7 @@ public static class SettingsEndpoints
             [FromServices] IOpportunityRepository repository,
             [FromServices] ITelegramNotifier notifier,
             [FromServices] CreateManualOpportunityHandler createHandler,
+            [FromServices] EvaluateOpportunityHandler evaluateHandler,
             [FromServices] IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
@@ -121,6 +125,7 @@ public static class SettingsEndpoints
 
                 var scraped = await scraper.ScrapeAsync(maxPages, cancellationToken);
                 var imported = 0;
+                var evaluated = 0;
                 var skipped = 0;
 
                 foreach (var item in scraped)
@@ -148,17 +153,36 @@ public static class SettingsEndpoints
                         PublishedAt = item.PublishedAt
                     };
 
-                    await createHandler.HandleAsync(request, cancellationToken);
+                    var created = await createHandler.HandleAsync(request, cancellationToken);
+
+                    for (var attempt = 0; attempt < 3; attempt++)
+                    {
+                        try
+                        {
+                            await evaluateHandler.HandleAsync(created.Id, cancellationToken);
+                            evaluated++;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Scraper] Evaluation attempt {attempt + 1} failed for {item.Title}: {ex.Message}");
+                            await Task.Delay(10000 * (attempt + 1), cancellationToken);
+                        }
+                    }
+
+                    await Task.Delay(5000, cancellationToken);
+
                     imported++;
                 }
 
                 await notifier.SendMessageAsync(
                     $"\ud83d\udce5 <b>Scrape manual completo</b>\n\n" +
                     $"<b>{imported}</b> nova(s) oportunidade(s).\n" +
+                    $"<b>{evaluated}</b> avaliada(s).\n" +
                     $"<b>{skipped}</b> ignorada(s).",
                     cancellationToken);
 
-                return Results.Ok(new { imported, skipped, total = scraped.Count });
+                return Results.Ok(new { imported, evaluated, skipped, total = scraped.Count });
             }
             catch (Exception ex)
             {
@@ -277,6 +301,7 @@ public sealed class ScraperSettingsResponse
     public string Language { get; set; } = "pt";
     public string Skills { get; set; } = "";
     public string Technology { get; set; } = "";
+    public string Sort { get; set; } = "date";
     public int MaxPages { get; set; }
     public bool LoginEnabled { get; set; }
     public string Email { get; set; } = "";
@@ -310,6 +335,7 @@ public sealed class ScraperUpdateRequest
     public string? Language { get; set; }
     public string? Skills { get; set; }
     public string? Technology { get; set; }
+    public string? Sort { get; set; }
     public int? MaxPages { get; set; }
     public bool? LoginEnabled { get; set; }
     public string? Email { get; set; }

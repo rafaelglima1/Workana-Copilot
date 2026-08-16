@@ -8,5 +8,5 @@ public sealed class MiMoOptions
     public string ApiKey { get; init; } = string.Empty;
     public string Model { get; init; } = "mimo-v2.5";
     public int TimeoutSeconds { get; init; } = 60;
-    public int MaxCompletionTokens { get; init; } = 2048;
+    public int MaxCompletionTokens { get; init; } = 4096;
 }

@@ -152,6 +152,14 @@ else
                             <input type="text" class="form-control" @bind="_scraperSkills" placeholder="api,c-1,sql" />
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Ordenar por</label>
+                            <select class="form-select" @bind="_scraperSort">
+                                <option value="date">Mais novas</option>
+                                <option value="relevance">Relevância</option>
+                                <option value="budget">Maior budget</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Max Páginas</label>
                             <input type="number" class="form-control" @bind="_scraperMaxPages" min="1" max="20" />
                         </div>
@@ -253,6 +261,7 @@ else
 
     private string _scraperLanguage = "pt";
     private string _scraperSkills = "";
+    private string _scraperSort = "date";
     private int _scraperMaxPages = 1;
     private int _scraperInterval = 60;
     private bool _scraperLoginEnabled;
@@ -296,6 +305,7 @@ else
             {
                 _scraperLanguage = settings.Scraper.Language ?? "pt";
                 _scraperSkills = settings.Scraper.Skills ?? "";
+                _scraperSort = settings.Scraper.Sort ?? "date";
                 _scraperMaxPages = settings.Scraper.MaxPages > 0 ? settings.Scraper.MaxPages : 1;
                 _scraperInterval = settings.Scraper.ScrapeIntervalMinutes > 0 ? settings.Scraper.ScrapeIntervalMinutes : 60;
                 _scraperLoginEnabled = settings.Scraper.LoginEnabled;
@@ -391,6 +401,7 @@ else
                     {
                         Language = _scraperLanguage,
                         Skills = _scraperSkills,
+                        Sort = _scraperSort,
                         MaxPages = _scraperMaxPages,
                         ScrapeIntervalMinutes = _scraperInterval,
                         LoginEnabled = _scraperLoginEnabled,

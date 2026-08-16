@@ -53,10 +53,8 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userPrompt }
             },
-            response_format = new { type = "json_object" },
             temperature = 0.2,
             stream = false,
-            thinking = new { type = "disabled" },
             max_completion_tokens = _options.MaxCompletionTokens
         };
 
@@ -69,7 +67,7 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
         HttpResponseMessage httpResponse;
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "/chat/completions")
+            var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(requestBody),
@@ -134,7 +132,9 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
             throw new OpportunityIntelligenceInvalidResponseException(
                 "MiMo returned empty content.");
 
-        var analysis = ParseAndValidate(content, chatResponse.Usage, _options.Model);
+        var jsonContent = ExtractJson(content);
+
+        var analysis = ParseAndValidate(jsonContent, chatResponse.Usage, _options.Model);
 
         LogUsage(chatResponse.Usage);
 
@@ -228,6 +228,27 @@ public sealed class MiMoOpportunityIntelligenceGateway : IOpportunityIntelligenc
         sb.AppendLine("</UNTRUSTED_OPPORTUNITY>");
 
         return sb.ToString();
+    }
+
+    private static string ExtractJson(string content)
+    {
+        var trimmed = content.Trim();
+
+        var fenceStart = trimmed.IndexOf("```json", StringComparison.OrdinalIgnoreCase);
+        if (fenceStart >= 0)
+        {
+            var jsonStart = fenceStart + 7;
+            var fenceEnd = trimmed.IndexOf("```", jsonStart, StringComparison.Ordinal);
+            if (fenceEnd > jsonStart)
+                trimmed = trimmed[jsonStart..fenceEnd].Trim();
+        }
+
+        var firstBrace = trimmed.IndexOf('{');
+        var lastBrace = trimmed.LastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+            trimmed = trimmed[firstBrace..(lastBrace + 1)];
+
+        return trimmed;
     }
 
     private static OpportunitySemanticAnalysis ParseAndValidate(

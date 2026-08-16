@@ -21,7 +21,7 @@ public class MiMoOpportunityIntelligenceGatewayTests
             ApiKey = apiKey,
             Model = model,
             TimeoutSeconds = 60,
-            MaxCompletionTokens = 2048
+            MaxCompletionTokens = 4096
         };
     }
 
@@ -105,20 +105,6 @@ public class MiMoOpportunityIntelligenceGatewayTests
     }
 
     [Fact]
-    public async Task AnalyzeAsync_SendsJsonMode()
-    {
-        var handler = FakeHttpMessageHandler.ReturningAnalysisJson(ValidAnalysisJson);
-        var gateway = CreateGateway(handler);
-
-        await gateway.AnalyzeAsync(CreateInput(), CancellationToken.None);
-
-        var request = handler.Requests.Single();
-        var body = await request.Content!.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(body);
-        Assert.Equal("json_object", doc.RootElement.GetProperty("response_format").GetProperty("type").GetString());
-    }
-
-    [Fact]
     public async Task AnalyzeAsync_SendsTemperature02()
     {
         var handler = FakeHttpMessageHandler.ReturningAnalysisJson(ValidAnalysisJson);
@@ -130,20 +116,6 @@ public class MiMoOpportunityIntelligenceGatewayTests
         var body = await request.Content!.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(body);
         Assert.Equal(0.2, doc.RootElement.GetProperty("temperature").GetDouble());
-    }
-
-    [Fact]
-    public async Task AnalyzeAsync_SendsThinkingDisabled()
-    {
-        var handler = FakeHttpMessageHandler.ReturningAnalysisJson(ValidAnalysisJson);
-        var gateway = CreateGateway(handler);
-
-        await gateway.AnalyzeAsync(CreateInput(), CancellationToken.None);
-
-        var request = handler.Requests.Single();
-        var body = await request.Content!.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(body);
-        Assert.Equal("disabled", doc.RootElement.GetProperty("thinking").GetProperty("type").GetString());
     }
 
     [Fact]
@@ -204,7 +176,7 @@ public class MiMoOpportunityIntelligenceGatewayTests
         var request = handler.Requests.Single();
         var body = await request.Content!.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(body);
-        Assert.Equal(2048, doc.RootElement.GetProperty("max_completion_tokens").GetInt32());
+        Assert.Equal(4096, doc.RootElement.GetProperty("max_completion_tokens").GetInt32());
     }
 
     [Fact]

@@ -68,19 +68,16 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                     if (cards.Count == 0)
                     {
                         _logger.LogWarning("No opportunity cards found on page {Page}", pageNum);
-                        cards = await page.QuerySelectorAllAsync("a[href*='/jobs/']");
+                        cards = await page.QuerySelectorAllAsync("a[href*='/job/']");
                     }
 
-                    if (cards.Count == 0)
+                    if (pageNum == 1)
                     {
-                        _logger.LogWarning("Still no cards, dumping page HTML for debug");
+                        _logger.LogWarning("Saving debug HTML for page {Page} (found {Count} cards)", pageNum, cards.Count);
                         var html = await page.ContentAsync();
-                        var debugPath = Path.Combine(Path.GetTempPath(), $"workana-debug-page{pageNum}.html");
+                        var debugPath = Path.Combine(Path.GetTempPath(), $"workana-debug-latest.html");
                         await File.WriteAllTextAsync(debugPath, html);
                         _logger.LogWarning("HTML saved to {Path}", debugPath);
-                        var screenshotPath = Path.Combine(Path.GetTempPath(), $"workana-debug-page{pageNum}.png");
-                        await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath, FullPage = true });
-                        _logger.LogWarning("Screenshot saved to {Path}", screenshotPath);
                     }
 
                     _logger.LogInformation("Found {Count} cards on page {Page}", cards.Count, pageNum);
@@ -252,12 +249,12 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
     private async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card, CancellationToken cancellationToken)
     {
-        var titleEl = await card.QuerySelectorAsync("h2, h3, .project-title, [class*='title'] a, a[href*='/jobs/']");
+        var titleEl = await card.QuerySelectorAsync("h2, h3, .project-title, [class*='title'] a, a[href*='/job/']");
         var title = titleEl is not null ? (await titleEl.TextContentAsync())?.Trim() : null;
         if (string.IsNullOrWhiteSpace(title))
             return null;
 
-        var linkEl = await card.QuerySelectorAsync("a[href*='/jobs/']");
+        var linkEl = await card.QuerySelectorAsync("a[href*='/job/']");
         var href = linkEl is not null ? await linkEl.GetAttributeAsync("href") : null;
         var externalUrl = !string.IsNullOrWhiteSpace(href)
             ? (href.StartsWith("http") ? href : $"https://www.workana.com{href}")
@@ -316,6 +313,9 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
         if (!string.IsNullOrWhiteSpace(_options.Skills))
             queryParts.Add($"skills={Uri.EscapeDataString(_options.Skills)}");
+
+        if (!string.IsNullOrWhiteSpace(_options.Sort))
+            queryParts.Add($"sort={Uri.EscapeDataString(_options.Sort)}");
 
         if (page > 1)
             queryParts.Add($"page={page}");
