@@ -1,0 +1,11 @@
+using Microsoft.Data.Sqlite;
+var conn = new SqliteConnection("Data Source=C:\\Users\\rafael.dacosta\\source\\repos\\Workana Copilot\\src\\FreelaHunter.Api\\freelahunter.db");
+conn.Open();
+var cmd = conn.CreateCommand();
+cmd.CommandText = "SELECT COUNT(*) FROM Opportunities";
+var count = cmd.ExecuteScalar();
+Console.WriteLine($"Opportunities: {count}");
+cmd.CommandText = "SELECT ExternalReference FROM Opportunities LIMIT 5";
+using var reader = cmd.ExecuteReader();
+while (reader.Read()) Console.WriteLine($"  URL: {reader.GetString(0)}");
+conn.Close();

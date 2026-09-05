@@ -26,6 +26,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
     {
         _logger.LogInformation("Starting Workana scraper, maxPages={MaxPages}", maxPages);
 
+        await DisposeBrowserAsync();
         await EnsureBrowserInitializedAsync(cancellationToken);
 
         var context = await _browser!.NewContextAsync(new BrowserNewContextOptions
@@ -75,7 +76,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                     {
                         _logger.LogWarning("Saving debug HTML for page {Page} (found {Count} cards)", pageNum, cards.Count);
                         var html = await page.ContentAsync();
-                        var debugPath = Path.Combine(Path.GetTempPath(), $"workana-debug-latest.html");
+                        var debugPath = Path.Combine(Path.GetTempPath(), "workana-debug-latest.html");
                         await File.WriteAllTextAsync(debugPath, html);
                         _logger.LogWarning("HTML saved to {Path}", debugPath);
                     }
@@ -86,7 +87,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
                     {
                         try
                         {
-                            var opportunity = await ParseCardAsync(card, cancellationToken);
+                            var opportunity = await ParseCardAsync(card);
                             if (opportunity is not null)
                                 opportunities.Add(opportunity);
                         }
@@ -247,7 +248,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
         }
     }
 
-    private async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card, CancellationToken cancellationToken)
+    private static async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card)
     {
         var titleEl = await card.QuerySelectorAsync("h2, h3, .project-title, [class*='title'] a, a[href*='/job/']");
         var title = titleEl is not null ? (await titleEl.TextContentAsync())?.Trim() : null;
@@ -328,24 +329,26 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
     private async Task EnsureBrowserInitializedAsync(CancellationToken cancellationToken)
     {
-        if (_browser is not null && _browser.IsConnected)
-            return;
-
         _playwright ??= await Playwright.CreateAsync();
-        _browser ??= await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
             Headless = _options.Headless,
             Args = ["--disable-blink-features=AutomationControlled"]
         });
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task DisposeBrowserAsync()
     {
         if (_browser is not null)
         {
-            await _browser.CloseAsync();
+            try { await _browser.CloseAsync(); } catch { }
             _browser = null;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeBrowserAsync();
         _playwright?.Dispose();
         _playwright = null;
     }
