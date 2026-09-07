@@ -6,6 +6,7 @@ public enum ContractMarketplace
     Workana = 1,
     Upwork = 2,
     Freelancer = 3,
+    Nerdin = 4,
     Other = 99
 }
 

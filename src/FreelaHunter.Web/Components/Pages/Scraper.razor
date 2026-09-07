@@ -4,7 +4,7 @@
 
 <PageTitle>Scraper - FreelaHunter</PageTitle>
 
-<h1 class="page-title">🕷️ Scraper Workana</h1>
+<h1 class="page-title">🕷️ Scraper</h1>
 
 <div class="row g-4">
     <div class="col-md-8">
@@ -55,8 +55,8 @@
                 {
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <small class="text-muted">Tecnologia</small>
-                            <div>@(_settings.Scraper?.Technology ?? "Não configurada")</div>
+                            <small class="text-muted">Providers Ativos</small>
+                            <div>@(string.Join(", ", _settings.Scraper?.EnabledProviders ?? []))</div>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Max Páginas</small>
@@ -67,12 +67,12 @@
                             <div>@(_settings.Scraper?.ScrapeIntervalMinutes ?? 0) min</div>
                         </div>
                         <div class="col-md-6">
-                            <small class="text-muted">Login</small>
-                            <div>@(_settings.Scraper?.LoginEnabled == true ? $"Sim ({_settings.Scraper?.Email})" : "Não")</div>
+                            <small class="text-muted">Workana Login</small>
+                            <div>@(_settings.Scraper?.WorkanaLoginEnabled == true ? $"Sim ({_settings.Scraper?.WorkanaEmail})" : "Não")</div>
                         </div>
                         <div class="col-md-6">
-                            <small class="text-muted">URL Base</small>
-                            <div class="text-truncate">@(_settings.Scraper?.BaseUrl)</div>
+                            <small class="text-muted">Camoufox</small>
+                            <div>@(_settings.Scraper?.CamoufoxEnabled == true ? $"Sim ({_settings.Scraper?.CamoufoxServerUrl})" : "Não")</div>
                         </div>
                     </div>
                 }
@@ -143,9 +143,8 @@
             <div class="card-header">ℹ️ Sobre o Scraper</div>
             <div class="card-body">
                 <p class="small text-muted">
-                    O scraper coleta vagas do Workana automaticamente.
-                    Configurações de tecnologia, login e intervalo podem ser alteradas no
-                    <a href="/profile">Perfil</a>.
+                    O scraper coleta vagas do Workana e Nerdin automaticamente.
+                    Configurações podem ser alteradas nas configurações da API.
                 </p>
                 <p class="small text-muted mb-0">
                     O scraper também roda automaticamente a cada

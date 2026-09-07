@@ -1,6 +1,10 @@
 using FreelaHunter.Application;
+using FreelaHunter.Application.Providers;
 using FreelaHunter.Infrastructure.Persistence;
 using FreelaHunter.Infrastructure.Persistence.Repositories;
+using FreelaHunter.Infrastructure.Providers;
+using FreelaHunter.Infrastructure.Providers.Nerdin;
+using FreelaHunter.Infrastructure.Providers.Workana;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +13,8 @@ namespace FreelaHunter.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("FreelaHunter")
             ?? "Data Source=freelahunter.db";
@@ -26,9 +31,6 @@ public static class ServiceCollectionExtensions
         services.Configure<MiMoOptions>(
             configuration.GetSection(MiMoOptions.SectionName));
 
-        services.Configure<WorkanaScraperOptions>(
-            configuration.GetSection(WorkanaScraperOptions.SectionName));
-
         services.Configure<TelegramOptions>(
             configuration.GetSection(TelegramOptions.SectionName));
 
@@ -43,7 +45,32 @@ public static class ServiceCollectionExtensions
                 client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             });
 
-        services.AddSingleton<IWorkanaScraper, PlaywrightWorkanaScraper>();
+        // Camoufox options
+        services.Configure<CamoufoxOptions>(
+            configuration.GetSection(CamoufoxOptions.SectionName));
+
+        // Workana provider (legacy IWorkanaScraper + new IJobProvider)
+        services.Configure<WorkanaProviderOptions>(
+            configuration.GetSection(WorkanaProviderOptions.SectionName));
+#pragma warning disable CS0618 // Intentional backward compatibility with legacy IWorkanaScraper
+        services.AddSingleton<IWorkanaScraper, WorkanaProvider>();
+#pragma warning restore CS0618
+        services.AddSingleton<IJobProvider, WorkanaProvider>();
+
+        // Nerdin provider
+        services.Configure<NerdinProviderOptions>(
+            configuration.GetSection(NerdinProviderOptions.SectionName));
+        services.AddSingleton<IJobProvider, NerdinProvider>();
+
+        // Job Provider Registry
+        services.AddSingleton(sp =>
+        {
+            var registry = new JobProviderRegistry();
+            var providers = sp.GetServices<IJobProvider>();
+            foreach (var provider in providers)
+                registry.Register(provider);
+            return registry;
+        });
 
         return services;
     }

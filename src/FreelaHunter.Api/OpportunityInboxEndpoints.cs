@@ -249,6 +249,7 @@ public static class OpportunityInboxEndpoints
         ContractMarketplace.Workana => Marketplace.Workana,
         ContractMarketplace.Upwork => Marketplace.Upwork,
         ContractMarketplace.Freelancer => Marketplace.Freelancer,
+        ContractMarketplace.Nerdin => Marketplace.Nerdin,
         ContractMarketplace.Other => Marketplace.Other,
         _ => Marketplace.Unknown
     };
@@ -358,6 +359,7 @@ public static class OpportunityInboxEndpoints
         Marketplace.Workana => ContractMarketplace.Workana,
         Marketplace.Upwork => ContractMarketplace.Upwork,
         Marketplace.Freelancer => ContractMarketplace.Freelancer,
+        Marketplace.Nerdin => ContractMarketplace.Nerdin,
         Marketplace.Other => ContractMarketplace.Other,
         _ => ContractMarketplace.Unknown
     };

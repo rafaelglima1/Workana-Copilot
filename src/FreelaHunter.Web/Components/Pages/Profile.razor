@@ -303,13 +303,13 @@ else
             }
             if (settings?.Scraper is not null)
             {
-                _scraperLanguage = settings.Scraper.Language ?? "pt";
-                _scraperSkills = settings.Scraper.Skills ?? "";
-                _scraperSort = settings.Scraper.Sort ?? "date";
+                _scraperLanguage = settings.Scraper.WorkanaLanguage ?? "pt";
+                _scraperSkills = settings.Scraper.WorkanaSkills ?? "";
+                _scraperSort = settings.Scraper.WorkanaSort ?? "date";
                 _scraperMaxPages = settings.Scraper.MaxPages > 0 ? settings.Scraper.MaxPages : 1;
                 _scraperInterval = settings.Scraper.ScrapeIntervalMinutes > 0 ? settings.Scraper.ScrapeIntervalMinutes : 60;
-                _scraperLoginEnabled = settings.Scraper.LoginEnabled;
-                _scraperEmail = settings.Scraper.Email;
+                _scraperLoginEnabled = settings.Scraper.WorkanaLoginEnabled;
+                _scraperEmail = settings.Scraper.WorkanaEmail;
             }
         }
         catch { }
@@ -399,14 +399,14 @@ else
                     },
                     Scraper = new ScraperUpdateRequest
                     {
-                        Language = _scraperLanguage,
-                        Skills = _scraperSkills,
-                        Sort = _scraperSort,
+                        WorkanaLanguage = _scraperLanguage,
+                        WorkanaSkills = _scraperSkills,
+                        WorkanaSort = _scraperSort,
                         MaxPages = _scraperMaxPages,
                         ScrapeIntervalMinutes = _scraperInterval,
-                        LoginEnabled = _scraperLoginEnabled,
-                        Email = _scraperEmail,
-                        Password = string.IsNullOrWhiteSpace(_scraperPassword) ? null : _scraperPassword
+                        WorkanaLoginEnabled = _scraperLoginEnabled,
+                        WorkanaEmail = _scraperEmail,
+                        WorkanaPassword = string.IsNullOrWhiteSpace(_scraperPassword) ? null : _scraperPassword
                     }
                 });
             }

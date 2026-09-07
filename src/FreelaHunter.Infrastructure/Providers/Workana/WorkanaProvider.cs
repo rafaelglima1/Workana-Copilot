@@ -1,28 +1,47 @@
 using FreelaHunter.Application;
+using FreelaHunter.Application.Providers;
+using FreelaHunter.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 
-namespace FreelaHunter.Infrastructure;
+namespace FreelaHunter.Infrastructure.Providers.Workana;
 
-public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
+#pragma warning disable CS0618 // Intentional backward compatibility with legacy IWorkanaScraper
+public sealed class WorkanaProvider : IWorkanaScraper, IJobProvider, IAsyncDisposable
 {
-    private readonly WorkanaScraperOptions _options;
-    private readonly ILogger<PlaywrightWorkanaScraper> _logger;
+    private readonly WorkanaProviderOptions _options;
+    private readonly CamoufoxOptions _camoufoxOptions;
+    private readonly ILogger<WorkanaProvider> _logger;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
 
-    public PlaywrightWorkanaScraper(
-        IOptions<WorkanaScraperOptions> options,
-        ILogger<PlaywrightWorkanaScraper> logger)
+    public WorkanaProvider(
+        IOptions<WorkanaProviderOptions> options,
+        IOptions<CamoufoxOptions> camoufoxOptions,
+        ILogger<WorkanaProvider> logger)
     {
         _options = options.Value;
+        _camoufoxOptions = camoufoxOptions.Value;
         _logger = logger;
     }
+
+    public string ProviderId => "workana";
+
+    public string DisplayName => "Workana";
+
+    public Marketplace Marketplace => Marketplace.Workana;
 
     public async Task<IReadOnlyList<ScrapedOpportunity>> ScrapeAsync(
         int maxPages,
         CancellationToken cancellationToken)
+    {
+        return await FetchOpenJobsAsync(maxPages, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ScrapedOpportunity>> FetchOpenJobsAsync(
+        int maxPages,
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting Workana scraper, maxPages={MaxPages}", maxPages);
 
@@ -124,6 +143,92 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
         _logger.LogInformation("Scraped {Count} opportunities total", opportunities.Count);
         return opportunities;
+    }
+
+    public async Task<ScrapedOpportunity?> ExtractJobDetailsAsync(
+        string jobIdOrUrl,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Extracting details for Workana job: {Url}", jobIdOrUrl);
+
+        await DisposeBrowserAsync();
+        await EnsureBrowserInitializedAsync(cancellationToken);
+
+        var context = await _browser!.NewContextAsync(new BrowserNewContextOptions
+        {
+            UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            ViewportSize = new ViewportSize { Width = 1280, Height = 800 },
+            Locale = "pt-BR"
+        });
+
+        var page = await context.NewPageAsync();
+
+        try
+        {
+            await page.GotoAsync(jobIdOrUrl, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.Load,
+                Timeout = 30000
+            });
+
+            await page.WaitForTimeoutAsync(_options.DetailDelayMs);
+
+            var titleEl = await page.QuerySelectorAsync("h1, .project-title, [class*='title']");
+            var title = titleEl is not null ? (await titleEl.TextContentAsync())?.Trim() ?? "" : "";
+
+            var descEl = await page.QuerySelectorAsync(".project-description, .job-description, [class*='description']");
+            var description = descEl is not null ? (await descEl.TextContentAsync())?.Trim() ?? "" : "";
+
+            var skills = new List<string>();
+            var skillEls = await page.QuerySelectorAllAsync(".skill, .tag, [class*='skill'], [class*='tag'], .badge");
+            foreach (var s in skillEls)
+            {
+                var text = (await s.TextContentAsync())?.Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                    skills.Add(text);
+            }
+
+            var budgetEl = await page.QuerySelectorAsync(".budget, [class*='budget'], [class*='price']");
+            var budgetSummary = budgetEl is not null ? (await budgetEl.TextContentAsync())?.Trim() : null;
+
+            var clientEl = await page.QuerySelectorAsync(".client-info, [class*='client'], .company-name");
+            var clientCountry = clientEl is not null ? (await clientEl.TextContentAsync())?.Trim() : null;
+
+            DateTime? publishedAt = null;
+            var dateEl = await page.QuerySelectorAsync("time, [class*='date'], [class*='time'], .timeago");
+            if (dateEl is not null)
+            {
+                var dateStr = await dateEl.GetAttributeAsync("datetime") ?? (await dateEl.TextContentAsync())?.Trim();
+                if (DateTime.TryParse(dateStr, out var parsed))
+                    publishedAt = parsed;
+            }
+
+            return new ScrapedOpportunity
+            {
+                ProviderId = ProviderId,
+                Title = title,
+                Description = description.Length > 5000 ? description[..5000] : description,
+                RequiredSkills = skills,
+                BudgetSummary = budgetSummary,
+                ClientCountry = clientCountry,
+                ExternalUrl = jobIdOrUrl,
+                PublishedAt = publishedAt
+            };
+        }
+        finally
+        {
+            await context.CloseAsync();
+        }
+    }
+
+    public Task<bool> SubmitApplicationAsync(
+        JobApplicationData applicationData,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning(
+            "WorkanaProvider.SubmitApplicationAsync not yet implemented for {Title}",
+            applicationData.OpportunityTitle);
+        return Task.FromResult(false);
     }
 
     private async Task LoginAsync(IPage page, CancellationToken cancellationToken)
@@ -248,7 +353,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
         }
     }
 
-    private static async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card)
+    private async Task<ScrapedOpportunity?> ParseCardAsync(IElementHandle card)
     {
         var titleEl = await card.QuerySelectorAsync("h2, h3, .project-title, [class*='title'] a, a[href*='/job/']");
         var title = titleEl is not null ? (await titleEl.TextContentAsync())?.Trim() : null;
@@ -293,6 +398,7 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
 
         return new ScrapedOpportunity
         {
+            ProviderId = ProviderId,
             Title = title,
             Description = description.Length > 2000 ? description[..2000] : description,
             Category = category,
@@ -330,11 +436,28 @@ public sealed class PlaywrightWorkanaScraper : IWorkanaScraper, IAsyncDisposable
     private async Task EnsureBrowserInitializedAsync(CancellationToken cancellationToken)
     {
         _playwright ??= await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+
+        if (_camoufoxOptions.Enabled)
         {
-            Headless = _options.Headless,
-            Args = ["--disable-blink-features=AutomationControlled"]
-        });
+            _logger.LogInformation(
+                "Connecting to Camoufox server at {ServerUrl}",
+                _camoufoxOptions.ServerUrl);
+
+            _browser = await _playwright.Chromium.ConnectOverCDPAsync(
+                _camoufoxOptions.ServerUrl,
+                new BrowserTypeConnectOverCDPOptions
+                {
+                    Timeout = _camoufoxOptions.ConnectTimeoutSeconds * 1000
+                });
+        }
+        else
+        {
+            _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            {
+                Headless = _options.Headless,
+                Args = ["--disable-blink-features=AutomationControlled"]
+            });
+        }
     }
 
     private async Task DisposeBrowserAsync()

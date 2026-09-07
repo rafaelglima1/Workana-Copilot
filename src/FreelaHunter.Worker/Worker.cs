@@ -1,4 +1,5 @@
 using FreelaHunter.Application;
+using FreelaHunter.Application.Providers;
 using FreelaHunter.Contracts.Opportunities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -77,82 +78,111 @@ public sealed class Worker : BackgroundService
 
     private async Task RunScrapeCycleAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting Workana scrape cycle...");
+        _logger.LogInformation("Starting scrape cycle across enabled providers...");
 
         using var scope = _scopeFactory.CreateScope();
-        var scraper = scope.ServiceProvider.GetRequiredService<IWorkanaScraper>();
+        var registry = scope.ServiceProvider.GetRequiredService<JobProviderRegistry>();
         var repository = scope.ServiceProvider.GetRequiredService<IOpportunityRepository>();
         var notifier = scope.ServiceProvider.GetRequiredService<ITelegramNotifier>();
+        var createHandler = scope.ServiceProvider.GetRequiredService<CreateManualOpportunityHandler>();
 
-        try
+        var enabledIds = _options.Value.EnabledProviders;
+        var providers = registry.GetEnabledProviders(enabledIds);
+
+        var totalImported = 0;
+        var totalSkipped = 0;
+
+        foreach (var provider in providers)
         {
-            var scraped = await scraper.ScrapeAsync(_options.Value.ScrapeMaxPages, cancellationToken);
-
-            var imported = 0;
-            var skipped = 0;
-
-            foreach (var item in scraped)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                _logger.LogInformation("Scraping provider: {Provider}", provider.DisplayName);
 
-                if (string.IsNullOrWhiteSpace(item.ExternalUrl))
+                var scraped = await provider.FetchOpenJobsAsync(
+                    _options.Value.ScrapeMaxPages, cancellationToken);
+
+                var imported = 0;
+                var skipped = 0;
+
+                foreach (var item in scraped)
                 {
-                    skipped++;
-                    continue;
-                }
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                var existing = await repository.GetByExternalReferenceAsync(
-                    item.ExternalUrl, cancellationToken);
-
-                if (existing is not null)
-                {
-                    skipped++;
-                    continue;
-                }
-
-                var request = new CreateManualOpportunityRequest
-                {
-                    Marketplace = ContractMarketplace.Workana,
-                    Title = item.Title,
-                    Description = item.Description,
-                    Category = item.Category,
-                    Subcategory = item.Subcategory,
-                    RequiredSkills = item.RequiredSkills,
-                    Budget = MapBudgetFromSummary(item.BudgetSummary),
-                    Client = new ClientInput
+                    if (string.IsNullOrWhiteSpace(item.ExternalUrl))
                     {
-                        Country = item.ClientCountry
-                    },
-                    Competition = item.ProposalsCount.HasValue
-                        ? new CompetitionInput { ProposalCount = item.ProposalsCount.Value }
-                        : null,
-                    ExternalReference = item.ExternalUrl,
-                    PublishedAt = item.PublishedAt
-                };
+                        skipped++;
+                        continue;
+                    }
 
-                var createHandler = scope.ServiceProvider.GetRequiredService<CreateManualOpportunityHandler>();
-                await createHandler.HandleAsync(request, cancellationToken);
-                imported++;
+                    var existing = await repository.GetByExternalReferenceAsync(
+                        item.ExternalUrl, cancellationToken);
+
+                    if (existing is not null)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var request = new CreateManualOpportunityRequest
+                    {
+                        Marketplace = MapMarketplace(provider.Marketplace),
+                        Title = item.Title,
+                        Description = item.Description,
+                        Category = item.Category,
+                        Subcategory = item.Subcategory,
+                        RequiredSkills = item.RequiredSkills,
+                        Budget = MapBudgetFromSummary(item.BudgetSummary),
+                        Client = new ClientInput
+                        {
+                            Country = item.ClientCountry
+                        },
+                        Competition = item.ProposalsCount.HasValue
+                            ? new CompetitionInput { ProposalCount = item.ProposalsCount.Value }
+                            : null,
+                        ExternalReference = item.ExternalUrl,
+                        PublishedAt = item.PublishedAt
+                    };
+
+                    await createHandler.HandleAsync(request, cancellationToken);
+                    imported++;
+                }
+
+                totalImported += imported;
+                totalSkipped += skipped;
+
+                _logger.LogInformation(
+                    "Provider {Provider}: {Imported} new, {Skipped} skipped.",
+                    provider.DisplayName, imported, skipped);
             }
-
-            _logger.LogInformation(
-                "Scrape cycle complete: {Imported} new, {Skipped} skipped.",
-                imported, skipped);
-
-            if (imported > 0 && _options.Value.NotifyOnScrape)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                await notifier.SendMessageAsync(
-                    $"📥 <b>Scrape Workana completo</b>\n\n" +
-                    $"<b>{imported}</b> nova(s) oportunidade(s) encontrada(s).\n" +
-                    $"<b>{skipped}</b> ignorada(s) (duplicatas ou sem URL).",
-                    cancellationToken);
+                _logger.LogError(ex, "Scrape cycle failed for provider {Provider}", provider.DisplayName);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+
+        _logger.LogInformation(
+            "Scrape cycle complete: {Imported} total new, {Skipped} total skipped.",
+            totalImported, totalSkipped);
+
+        if (totalImported > 0 && _options.Value.NotifyOnScrape)
         {
-            _logger.LogWarning(ex, "Scrape cycle failed.");
+            await notifier.SendMessageAsync(
+                $"📥 <b>Scrape completo</b>\n\n" +
+                $"<b>{totalImported}</b> nova(s) oportunidade(s) encontrada(s).\n" +
+                $"<b>{totalSkipped}</b> ignorada(s) (duplicatas ou sem URL).",
+                cancellationToken);
         }
     }
+
+    private static ContractMarketplace MapMarketplace(Domain.Enums.Marketplace domain) => domain switch
+    {
+        Domain.Enums.Marketplace.Workana => ContractMarketplace.Workana,
+        Domain.Enums.Marketplace.Upwork => ContractMarketplace.Upwork,
+        Domain.Enums.Marketplace.Freelancer => ContractMarketplace.Freelancer,
+        Domain.Enums.Marketplace.Nerdin => ContractMarketplace.Nerdin,
+        Domain.Enums.Marketplace.Other => ContractMarketplace.Other,
+        _ => ContractMarketplace.Unknown
+    };
 
     private static BudgetInput? MapBudgetFromSummary(string? budgetSummary)
     {

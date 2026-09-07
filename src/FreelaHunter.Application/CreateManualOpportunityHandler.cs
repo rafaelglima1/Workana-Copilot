@@ -55,6 +55,7 @@ public class CreateManualOpportunityHandler
             ContractMarketplace.Workana => Marketplace.Workana,
             ContractMarketplace.Upwork => Marketplace.Upwork,
             ContractMarketplace.Freelancer => Marketplace.Freelancer,
+            ContractMarketplace.Nerdin => Marketplace.Nerdin,
             ContractMarketplace.Other => Marketplace.Other,
             _ => throw new DomainException($"Unknown marketplace: {contract}")
         };
@@ -167,6 +168,7 @@ public class CreateManualOpportunityHandler
         Marketplace.Workana => ContractMarketplace.Workana,
         Marketplace.Upwork => ContractMarketplace.Upwork,
         Marketplace.Freelancer => ContractMarketplace.Freelancer,
+        Marketplace.Nerdin => ContractMarketplace.Nerdin,
         Marketplace.Other => ContractMarketplace.Other,
         _ => ContractMarketplace.Unknown
     };

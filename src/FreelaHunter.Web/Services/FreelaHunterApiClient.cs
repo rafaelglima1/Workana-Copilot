@@ -198,15 +198,19 @@ public sealed class TelegramSettingsResponse
 
 public sealed class ScraperSettingsResponse
 {
-    public string BaseUrl { get; set; } = "";
-    public string Language { get; set; } = "pt";
-    public string Skills { get; set; } = "";
-    public string Technology { get; set; } = "";
-    public string Sort { get; set; } = "date";
-    public int MaxPages { get; set; }
-    public bool LoginEnabled { get; set; }
-    public string Email { get; set; } = "";
+    public string WorkanaBaseUrl { get; set; } = "";
+    public string WorkanaLanguage { get; set; } = "pt";
+    public string WorkanaSkills { get; set; } = "";
+    public string WorkanaSort { get; set; } = "date";
+    public bool WorkanaLoginEnabled { get; set; }
+    public string WorkanaEmail { get; set; } = "";
+    public string NerdinBaseUrl { get; set; } = "";
+    public string NerdinTechnology { get; set; } = "";
+    public string[] EnabledProviders { get; set; } = ["workana"];
     public int ScrapeIntervalMinutes { get; set; }
+    public int MaxPages { get; set; }
+    public bool CamoufoxEnabled { get; set; }
+    public string CamoufoxServerUrl { get; set; } = "";
 }
 
 public sealed class UpdateSettingsRequest
@@ -232,16 +236,20 @@ public sealed class TelegramUpdateRequest
 
 public sealed class ScraperUpdateRequest
 {
-    public string? BaseUrl { get; set; }
-    public string? Language { get; set; }
-    public string? Skills { get; set; }
-    public string? Technology { get; set; }
-    public string? Sort { get; set; }
-    public int? MaxPages { get; set; }
-    public bool? LoginEnabled { get; set; }
-    public string? Email { get; set; }
-    public string? Password { get; set; }
+    public string? WorkanaBaseUrl { get; set; }
+    public string? WorkanaLanguage { get; set; }
+    public string? WorkanaSkills { get; set; }
+    public string? WorkanaSort { get; set; }
+    public bool? WorkanaLoginEnabled { get; set; }
+    public string? WorkanaEmail { get; set; }
+    public string? WorkanaPassword { get; set; }
+    public string? NerdinBaseUrl { get; set; }
+    public string? NerdinTechnology { get; set; }
+    public string[]? EnabledProviders { get; set; }
     public int? ScrapeIntervalMinutes { get; set; }
+    public int? MaxPages { get; set; }
+    public bool? CamoufoxEnabled { get; set; }
+    public string? CamoufoxServerUrl { get; set; }
 }
 
 public sealed class ScraperRunResult

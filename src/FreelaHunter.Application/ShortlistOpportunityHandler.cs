@@ -78,6 +78,7 @@ public class ShortlistOpportunityHandler
         Marketplace.Workana => ContractMarketplace.Workana,
         Marketplace.Upwork => ContractMarketplace.Upwork,
         Marketplace.Freelancer => ContractMarketplace.Freelancer,
+        Marketplace.Nerdin => ContractMarketplace.Nerdin,
         Marketplace.Other => ContractMarketplace.Other,
         _ => ContractMarketplace.Unknown
     };
